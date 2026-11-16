@@ -399,10 +399,11 @@ window.__ModuleLoader__.load({
       glow: 62,
       speed: 46,
       backdrop: 46,
-      wallBright: 46,
+      wallBright: 50,
       wallLoop: true,
       playlist: [],
       wall: null,
+      settingsVersion: 3,
     })
 
     const ROTATE_CHOICES = [20, 30, 45, 60, 120, 300]
@@ -414,7 +415,21 @@ window.__ModuleLoader__.load({
     }
 
     function sanitize(raw) {
-      const next = { ...DEFAULTS, ...(raw && typeof raw === 'object' ? raw : {}) }
+      const source = raw && typeof raw === 'object' ? raw : {}
+      const next = { ...DEFAULTS, ...source }
+      // v1 -> v2: the brightness slider used to map 0-100 onto 0.9x-4.8x,
+      // which blew out most pictures by the 30% mark. Re-map an old value so
+      // the picture keeps the same look while the slider regains its range.
+      // v2 -> v3: a value left in the bottom tenth is such an old value that
+      // was saved after the first re-map; pull it into the useful middle.
+      if (source.settingsVersion === undefined) {
+        const factor = 0.9 + (clamp(next.wallBright, 0, 100) / 100) * 3.9
+        next.wallBright = Math.round(Math.min(100, Math.max(0, ((factor - 0.7) / 1.1) * 100)))
+      } else if (source.settingsVersion < 3 && clamp(next.wallBright, 0, 100) < 10) {
+        const factor = 0.9 + (clamp(next.wallBright, 0, 100) / 100) * 3.9
+        next.wallBright = Math.round(Math.min(100, Math.max(0, ((factor - 0.7) / 1.1) * 100)))
+      }
+      next.settingsVersion = 3
       if (!SKIN_BY_ID.has(next.skin)) next.skin = DEFAULTS.skin
       if (next.category !== 'all' && !CAT_BY_ID.has(next.category)) next.category = 'all'
       next.enabled = next.enabled !== false
@@ -1013,7 +1028,7 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
       // its floor is what actually dims a wallpaper; keep it near zero.
       root.style.setProperty('--fx-side-d', Math.round(Math.max(active ? 1 : 40, density * (active ? 0.6 : 1) - (active ? 0 : 12))) + '%')
       root.style.setProperty('--fx-side-l', Math.round(Math.min(95, Math.max(active ? 42 : 78, density + 2))) + '%')
-      root.style.setProperty('--fx-wall-bright', (0.9 + (state.wallBright / 100) * 3.9).toFixed(2))
+      root.style.setProperty('--fx-wall-bright', (0.7 + (state.wallBright / 100) * 1.1).toFixed(2))
 
       if (playlist.length > 0) {
         // The playlist owns the backdrop; its videos are drawn by the video layer.
@@ -1096,7 +1111,11 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
           className: 'dshneon-range',
           onChange: (event) => props.onChange(Number(event.target.value)),
         }),
-        h('span', { className: 'dshneon-range__val' }, props.value + '%'),
+        h(
+          'span',
+          { className: 'dshneon-range__val' },
+          typeof props.format === 'function' ? props.format(props.value) : props.value + '%',
+        ),
       )
     }
 
@@ -1332,6 +1351,7 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
               h(Range, {
                 value: props.bright,
                 label: tr('wallBright'),
+                format: (value) => (0.7 + (value / 100) * 1.1).toFixed(2) + '\u00d7',
                 onChange: props.onBright,
               }),
             )
@@ -1733,7 +1753,7 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
               h(
                 'span',
                 { className: 'dshneon-foot__actions' },
-                h('span', { className: 'dshneon-foot__ver' }, 'v0.12.1'),
+                h('span', { className: 'dshneon-foot__ver' }, 'v0.12.3'),
                 h(
                   'button',
                   {
@@ -2125,8 +2145,8 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
       if (!isVideo) {
         const mean = await measureLuminance(url)
         if (typeof mean === 'number' && mean > 0) {
-          const factor = Math.min(3.6, Math.max(1.2, 205 / mean))
-          brightness = Math.round(Math.min(100, Math.max(0, ((factor - 0.9) / 3.9) * 100)))
+          const factor = Math.min(1.8, Math.max(1, 200 / mean))
+          brightness = Math.round(Math.min(100, Math.max(0, ((factor - 0.7) / 1.1) * 100)))
         }
       }
 
