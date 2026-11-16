@@ -117,6 +117,8 @@ window.__ModuleLoader__.load({
         wallGroupClips: '素材',
         wallGroupAnime: '番剧',
         wallLoop: '循环播放',
+        wallSound: '声音',
+        wallVolume: '音量',
         wallCheck: '加入播放列表',
         playlistActive: '播放列表',
         playlistHint: '勾选的视频会依次自动循环',
@@ -126,6 +128,7 @@ window.__ModuleLoader__.load({
         videoPaused: '已暂停',
         videoLoading: '缓冲中',
         videoError: '加载失败',
+        videoBlocked: '点击页面播放声音',
         animeSlam: '灌篮高手',
         animeSlamMovie: '灌篮剧场版',
         animeTop: '全网高光',
@@ -230,6 +233,8 @@ window.__ModuleLoader__.load({
         wallGroupClips: 'Clips',
         wallGroupAnime: 'Anime',
         wallLoop: 'Loop',
+        wallSound: 'Sound',
+        wallVolume: 'Volume',
         wallCheck: 'Add to playlist',
         playlistActive: 'Playlist',
         playlistHint: 'Checked clips rotate automatically',
@@ -239,6 +244,7 @@ window.__ModuleLoader__.load({
         videoPaused: 'paused',
         videoLoading: 'buffering',
         videoError: 'failed to load',
+        videoBlocked: 'click the page to unmute',
         animeSlam: 'Slam Dunk',
         animeSlamMovie: 'Slam Dunk movies',
         animeTop: 'Top cuts',
@@ -401,6 +407,8 @@ window.__ModuleLoader__.load({
       backdrop: 46,
       wallBright: 50,
       wallLoop: true,
+      wallSound: false,
+      wallVolume: 40,
       playlist: [],
       wall: null,
       settingsVersion: 3,
@@ -442,6 +450,8 @@ window.__ModuleLoader__.load({
       next.backdrop = clamp(next.backdrop, 0, 100)
       next.wallBright = clamp(next.wallBright, 0, 100)
       next.wallLoop = next.wallLoop !== false
+      next.wallSound = next.wallSound === true
+      next.wallVolume = clamp(next.wallVolume, 0, 100)
       next.playlist = Array.isArray(next.playlist)
         ? next.playlist.map(sanitizeWall).filter(Boolean).slice(0, 12)
         : []
@@ -1313,9 +1323,11 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
                   ? tr('videoPlaying')
                   : state.videoStatus === 'paused'
                     ? tr('videoPaused')
-                    : state.videoStatus === 'error'
-                      ? tr('videoError')
-                      : tr('videoLoading')),
+                    : state.videoStatus === 'blocked'
+                      ? tr('videoBlocked')
+                      : state.videoStatus === 'error'
+                        ? tr('videoError')
+                        : tr('videoLoading')),
             )
           : null,
         h(
@@ -1388,6 +1400,29 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
                 onChange: props.onLoop,
               }),
             )
+          : null,
+        current && current.kind === 'video'
+          ? h(
+              'div',
+              { className: 'dshneon-row' },
+              h(
+                'div',
+                { className: 'dshneon-row__text' },
+                h('span', { className: 'dshneon-row__label' }, tr('wallSound')),
+              ),
+              h(Switch, {
+                checked: props.sound === true,
+                label: tr('wallSound'),
+                onChange: props.onSound,
+              }),
+            )
+          : null,
+        current && current.kind === 'video' && props.sound
+          ? h(Range, {
+              value: props.volume,
+              label: tr('wallVolume'),
+              onChange: props.onVolume,
+            })
           : null,
         current
           ? h(
@@ -1597,9 +1632,13 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
               wall: state.wall,
               bright: state.wallBright,
               loop: state.wallLoop,
+              sound: state.wallSound,
+              volume: state.wallVolume,
               playlist: state.playlist,
               onBright: (value) => update({ wallBright: value }),
               onLoop: (value) => update({ wallLoop: value }),
+              onSound: (value) => update({ wallSound: value }),
+              onVolume: (value) => update({ wallVolume: value }),
               onToggle: togglePlaylist,
               onClearPlaylist: () => store.set({ playlist: [] }),
               onApply: applyWallpaper,
@@ -1750,7 +1789,7 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
               h(
                 'span',
                 { className: 'dshneon-foot__actions' },
-                h('span', { className: 'dshneon-foot__ver' }, 'v0.12.6'),
+                h('span', { className: 'dshneon-foot__ver' }, 'v0.13.0'),
                 h(
                   'button',
                   {
@@ -2206,6 +2245,25 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
     let warmVideo = null
     let warmTimer = null
     let stallTimer = null
+    let audioUnlockHandler = null
+
+    /** Resume audible playback on the first click/keypress after a block. */
+    function armAudioUnlock() {
+      if (audioUnlockHandler) return
+      const unlock = () => {
+        document.removeEventListener('pointerdown', unlock, true)
+        document.removeEventListener('keydown', unlock, true)
+        audioUnlockHandler = null
+        const video = videoLayer && videoLayer.querySelector('video')
+        if (!video) return
+        video.muted = false
+        const play = video.play()
+        if (play && typeof play.catch === 'function') play.catch(() => undefined)
+      }
+      audioUnlockHandler = unlock
+      document.addEventListener('pointerdown', unlock, true)
+      document.addEventListener('keydown', unlock, true)
+    }
     let visibilityHandler = null
 
     function clearWarmVideo() {
@@ -2385,8 +2443,20 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
       }
       // A chosen video wallpaper keeps playing even under "reduce motion":
       // the user picked it explicitly, and pausing left a dark paused frame.
+      const wantSound = state.wallSound === true
+      video.muted = !wantSound
+      if (wantSound) {
+        video.volume = Math.min(1, Math.max(0, (Number(state.wallVolume) || 0) / 100))
+      }
       const play = video.play()
-      if (play && typeof play.catch === 'function') play.catch(() => undefined)
+      if (play && typeof play.catch === 'function') {
+        play.catch(() => {
+          if (!wantSound) return
+          // Browsers refuse audible autoplay until the page has been clicked.
+          wallStore.patch({ videoStatus: 'blocked' })
+          armAudioUnlock()
+        })
+      }
       // Prefetch the next clip only once the current one has had time to
       // buffer; downloading both at once is what caused the hitching.
       if (warmTimer) window.clearTimeout(warmTimer)
@@ -2538,6 +2608,11 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
           if (visibilityHandler) {
             document.removeEventListener('visibilitychange', visibilityHandler)
             visibilityHandler = null
+          }
+          if (audioUnlockHandler) {
+            document.removeEventListener('pointerdown', audioUnlockHandler, true)
+            document.removeEventListener('keydown', audioUnlockHandler, true)
+            audioUnlockHandler = null
           }
         }
       })
