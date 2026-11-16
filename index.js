@@ -45,7 +45,18 @@ const ALLOWED_HOSTS = new Set([
 ])
 
 const MIXKIT_DEFAULT = ['nature', 'abstract', 'city', 'sci-fi', 'particles', 'space']
-const MIXKIT_ALLOWED = new Set([...MIXKIT_DEFAULT, 'animals', 'people', 'cartoon'])
+const MIXKIT_ALLOWED = new Set([
+  ...MIXKIT_DEFAULT,
+  'animals',
+  'people',
+  'cartoon',
+  'sport',
+  'water',
+  'fire',
+  'technology',
+  'travel',
+  'food',
+])
 
 // Animation clips from Sakugabooru (fan-archived TV/movie animation), keyed by
 // a short id. Several tags are merged per series so long shows contribute all
@@ -101,6 +112,15 @@ const ANIME_SERIES = {
   chainsaw: { label: '电锯人', tags: ['chainsaw_man'] },
   frieren: { label: '葬送的芙莉莲', tags: ['sousou_no_frieren'] },
   mha: { label: '我的英雄学院', tags: ['boku_no_hero_academia'] },
+  haikyuu: { label: '排球少年', tags: ['haikyuu!!'] },
+  kuroko: { label: '黑子的篮球', tags: ['kuroko_no_basket'] },
+  bluelock: { label: '蓝色监狱', tags: ['blue_lock'] },
+  opm: { label: '一拳超人', tags: ['one-punch_man'] },
+  fmab: { label: '钢之炼金术师', tags: ['fullmetal_alchemist_brotherhood'] },
+  vinland: { label: '冰海战记', tags: ['vinland_saga'] },
+  eva: { label: '新世纪福音战士', tags: ['neon_genesis_evangelion'] },
+  violet: { label: '紫罗兰永恒花园', tags: ['violet_evergarden'] },
+  gintama: { label: '银魂', tags: ['gintama'] },
 }
 
 const listCache = new Map()

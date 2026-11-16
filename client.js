@@ -134,6 +134,15 @@ window.__ModuleLoader__.load({
         animeChainsaw: '电锯人',
         animeFrieren: '葬送的芙莉莲',
         animeMHA: '我的英雄学院',
+        animeHaikyuu: '排球少年',
+        animeKuroko: '黑子的篮球',
+        animeBlueLock: '蓝色监狱',
+        animeOPM: '一拳超人',
+        animeFMAB: '钢之炼金术师',
+        animeVinland: '冰海战记',
+        animeEva: '新世纪福音战士',
+        animeViolet: '紫罗兰永恒花园',
+        animeGintama: '银魂',
         animeDemon: '鬼灭之刃',
         animeDragon: '龙珠',
         animeTennis: '网球王子',
@@ -144,6 +153,12 @@ window.__ModuleLoader__.load({
         wallVideoCartoon: '卡通',
         wallVideoCity: '城市',
         wallVideoSpace: '太空',
+        wallVideoSport: '运动',
+        wallVideoWater: '水',
+        wallVideoFire: '烈火',
+        wallVideoTech: '科技',
+        wallVideoTravel: '旅行',
+        wallVideoFood: '美食',
         wallMore: '加载更多',
         wallClear: '去除壁纸',
         wallLoading: '正在加载壁纸库…',
@@ -230,6 +245,15 @@ window.__ModuleLoader__.load({
         animeChainsaw: 'Chainsaw Man',
         animeFrieren: 'Frieren',
         animeMHA: 'My Hero Academia',
+        animeHaikyuu: 'Haikyu!!',
+        animeKuroko: "Kuroko's Basketball",
+        animeBlueLock: 'Blue Lock',
+        animeOPM: 'One Punch Man',
+        animeFMAB: 'Fullmetal Alchemist',
+        animeVinland: 'Vinland Saga',
+        animeEva: 'Evangelion',
+        animeViolet: 'Violet Evergarden',
+        animeGintama: 'Gintama',
         animeDemon: 'Demon Slayer',
         animeDragon: 'Dragon Ball',
         animeTennis: 'Prince of Tennis',
@@ -240,6 +264,12 @@ window.__ModuleLoader__.load({
         wallVideoCartoon: 'Cartoon',
         wallVideoCity: 'City',
         wallVideoSpace: 'Space',
+        wallVideoSport: 'Sport',
+        wallVideoWater: 'Water',
+        wallVideoFire: 'Fire',
+        wallVideoTech: 'Tech',
+        wallVideoTravel: 'Travel',
+        wallVideoFood: 'Food',
         wallMore: 'Load more',
         wallClear: 'Remove wallpaper',
         wallLoading: 'Loading wallpapers…',
@@ -830,6 +860,7 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
 .dshneon-wallbar{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:8px 0}
 .dshneon-walltabs{display:flex;gap:6px;margin:10px 0 0}
 .dshneon-wallgroup-label{font-size:11px;line-height:1;color:var(--dsw-alias-label-secondary);margin-right:2px;flex:none}
+.dshneon-wallselect{flex:1;min-width:0;max-width:100%}
 .dshneon-wallbar--foot{margin:10px 0 2px}
 .dshneon-wallmore{flex:1;text-align:center}
 .dshneon-walls{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
@@ -1166,7 +1197,18 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
                 'div',
                 { className: 'dshneon-wallbar' },
                 h('span', { className: 'dshneon-wallgroup-label' }, tr('wallGroupAnime')),
-                animeChips.map(chip),
+                h(
+                  'select',
+                  {
+                    className: 'dshneon-select dshneon-wallselect',
+                    'aria-label': tr('wallGroupAnime'),
+                    value: animeChips.some((source) => source.id === state.source)
+                      ? state.source
+                      : 'animeclip:top',
+                    onChange: (event) => loadWalls(event.target.value, 1, false),
+                  },
+                  animeChips.map((source) => h('option', { key: source.id, value: source.id }, tr(source.key))),
+                ),
               ),
             ),
         items.length
@@ -1687,7 +1729,7 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
               h(
                 'span',
                 { className: 'dshneon-foot__actions' },
-                h('span', { className: 'dshneon-foot__ver' }, 'v0.11.6'),
+                h('span', { className: 'dshneon-foot__ver' }, 'v0.12.0'),
                 h(
                   'button',
                   {
@@ -1809,6 +1851,12 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
       { id: 'dynamic:animals', kind: 'video', group: 'clips', key: 'wallVideoAnimals' },
       { id: 'dynamic:people', kind: 'video', group: 'clips', key: 'wallVideoPeople' },
       { id: 'dynamic:cartoon', kind: 'video', group: 'clips', key: 'wallVideoCartoon' },
+      { id: 'dynamic:sport', kind: 'video', group: 'clips', key: 'wallVideoSport' },
+      { id: 'dynamic:water', kind: 'video', group: 'clips', key: 'wallVideoWater' },
+      { id: 'dynamic:fire', kind: 'video', group: 'clips', key: 'wallVideoFire' },
+      { id: 'dynamic:technology', kind: 'video', group: 'clips', key: 'wallVideoTech' },
+      { id: 'dynamic:travel', kind: 'video', group: 'clips', key: 'wallVideoTravel' },
+      { id: 'dynamic:food', kind: 'video', group: 'clips', key: 'wallVideoFood' },
       { id: 'dynamic:city', kind: 'video', group: 'clips', key: 'wallVideoCity' },
       { id: 'dynamic:space', kind: 'video', group: 'clips', key: 'wallVideoSpace' },
       { id: 'animeclip:top', kind: 'video', group: 'anime', key: 'animeTop' },
@@ -1821,6 +1869,15 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
       { id: 'animeclip:chainsaw', kind: 'video', group: 'anime', key: 'animeChainsaw' },
       { id: 'animeclip:frieren', kind: 'video', group: 'anime', key: 'animeFrieren' },
       { id: 'animeclip:mha', kind: 'video', group: 'anime', key: 'animeMHA' },
+      { id: 'animeclip:haikyuu', kind: 'video', group: 'anime', key: 'animeHaikyuu' },
+      { id: 'animeclip:kuroko', kind: 'video', group: 'anime', key: 'animeKuroko' },
+      { id: 'animeclip:bluelock', kind: 'video', group: 'anime', key: 'animeBlueLock' },
+      { id: 'animeclip:opm', kind: 'video', group: 'anime', key: 'animeOPM' },
+      { id: 'animeclip:fmab', kind: 'video', group: 'anime', key: 'animeFMAB' },
+      { id: 'animeclip:vinland', kind: 'video', group: 'anime', key: 'animeVinland' },
+      { id: 'animeclip:eva', kind: 'video', group: 'anime', key: 'animeEva' },
+      { id: 'animeclip:violet', kind: 'video', group: 'anime', key: 'animeViolet' },
+      { id: 'animeclip:gintama', kind: 'video', group: 'anime', key: 'animeGintama' },
       { id: 'animeclip:slam', kind: 'video', group: 'anime', key: 'animeSlam' },
       { id: 'animeclip:slam_movie', kind: 'video', group: 'anime', key: 'animeSlamMovie' },
       { id: 'animeclip:dragon', kind: 'video', group: 'anime', key: 'animeDragon' },
