@@ -122,6 +122,8 @@ window.__ModuleLoader__.load({
         audioNone: '无声',
         audioHas: '有声',
         wallLoop: '循环播放',
+        wallSound: '声音',
+        wallVolume: '音量',
         wallCheck: '加入播放列表',
         playlistActive: '播放列表',
         playlistHint: '勾选的视频会依次自动循环',
@@ -132,6 +134,7 @@ window.__ModuleLoader__.load({
         videoLoading: '缓冲中',
         videoError: '加载失败',
         videoBlocked: '点击页面播放声音',
+        videoSilent: '此片段无音轨',
         animeSlam: '灌篮高手',
         animeSlamMovie: '灌篮剧场版',
         animeTop: '全网高光',
@@ -241,6 +244,8 @@ window.__ModuleLoader__.load({
         audioNone: 'silent',
         audioHas: 'sound',
         wallLoop: 'Loop',
+        wallSound: 'Sound',
+        wallVolume: 'Volume',
         wallCheck: 'Add to playlist',
         playlistActive: 'Playlist',
         playlistHint: 'Checked clips rotate automatically',
@@ -251,6 +256,7 @@ window.__ModuleLoader__.load({
         videoLoading: 'buffering',
         videoError: 'failed to load',
         videoBlocked: 'click the page to unmute',
+        videoSilent: 'no audio track',
         animeSlam: 'Slam Dunk',
         animeSlamMovie: 'Slam Dunk movies',
         animeTop: 'Top cuts',
@@ -413,6 +419,8 @@ window.__ModuleLoader__.load({
       backdrop: 46,
       wallBright: 50,
       wallLoop: true,
+      wallSound: true,
+      wallVolume: 60,
       playlist: [],
       wall: null,
       settingsVersion: 3,
@@ -443,8 +451,8 @@ window.__ModuleLoader__.load({
       }
       next.settingsVersion = 3
       // Features that were removed (clip volume switch, background radio).
-      delete next.wallSound
-      delete next.wallVolume
+      next.wallSound = next.wallSound !== false
+      next.wallVolume = clamp(next.wallVolume, 0, 100)
       delete next.musicOn
       delete next.musicVolume
       delete next.musicStation
@@ -1442,6 +1450,32 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
               }),
             )
           : null,
+        current && current.kind === 'video'
+          ? h(
+              'div',
+              { className: 'dshneon-row' },
+              h(
+                'div',
+                { className: 'dshneon-row__text' },
+                h('span', { className: 'dshneon-row__label' }, tr('wallSound')),
+                current.audio === false
+                  ? h('span', { className: 'dshneon-row__hint' }, tr('videoSilent'))
+                  : null,
+              ),
+              h(Switch, {
+                checked: props.sound !== false,
+                label: tr('wallSound'),
+                onChange: props.onSound,
+              }),
+            )
+          : null,
+        current && current.kind === 'video' && current.audio !== false && props.sound !== false
+          ? h(Range, {
+              value: props.volume,
+              label: tr('wallVolume'),
+              onChange: props.onVolume,
+            })
+          : null,
         current
           ? h(
               'div',
@@ -1650,9 +1684,13 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
               wall: state.wall,
               bright: state.wallBright,
               loop: state.wallLoop,
+              sound: state.wallSound,
+              volume: state.wallVolume,
               playlist: state.playlist,
               onBright: (value) => update({ wallBright: value }),
               onLoop: (value) => update({ wallLoop: value }),
+              onSound: (value) => update({ wallSound: value }),
+              onVolume: (value) => update({ wallVolume: value }),
               onToggle: togglePlaylist,
               onLocalPick: openLocalPicker,
               onLocalClear: () => store.set({ wall: null }),
@@ -1805,7 +1843,7 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
               h(
                 'span',
                 { className: 'dshneon-foot__actions' },
-                h('span', { className: 'dshneon-foot__ver' }, 'v0.17.0'),
+                h('span', { className: 'dshneon-foot__ver' }, 'v0.17.1'),
                 h(
                   'button',
                   {
@@ -2547,11 +2585,15 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
       // A chosen video wallpaper keeps playing even under "reduce motion":
       // the user picked it explicitly, and pausing left a dark paused frame.
       const audible = !(current && current.audio === false)
-      video.muted = !audible
+      const wantSound = audible && state.wallSound !== false
+      video.muted = !wantSound
+      if (wantSound) {
+        video.volume = Math.min(1, Math.max(0, (Number(state.wallVolume) || 0) / 100))
+      }
       const play = video.play()
       if (play && typeof play.catch === 'function') {
         play.catch(() => {
-          if (!audible) return
+          if (!wantSound) return
           // Browsers refuse audible autoplay until the page has been clicked.
           wallStore.patch({ videoStatus: 'blocked' })
           armAudioUnlock()
