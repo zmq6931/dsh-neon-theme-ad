@@ -1685,7 +1685,7 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
               h(
                 'span',
                 { className: 'dshneon-foot__actions' },
-                h('span', { className: 'dshneon-foot__ver' }, 'v0.11.2'),
+                h('span', { className: 'dshneon-foot__ver' }, 'v0.11.3'),
                 h(
                   'button',
                   {
@@ -2120,10 +2120,70 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
      */
     let videoLayer = null
     let playlistIndex = 0
+    let warmVideo = null
+    let stallTimer = null
+    let visibilityHandler = null
+
+    function clearWarmVideo() {
+      if (!warmVideo) return
+      try {
+        warmVideo.removeAttribute('src')
+        warmVideo.load()
+        warmVideo.remove()
+      } catch (error) {
+        /* ignore */
+      }
+      warmVideo = null
+    }
+
+    /** Preload the next playlist clip so switching never waits for the network. */
+    function warmPlaylist(playlist, index) {
+      if (!document.body) return
+      if (playlist.length < 2) {
+        clearWarmVideo()
+        return
+      }
+      const next = playlist[(index + 1) % playlist.length]
+      if (!next || !next.url) {
+        clearWarmVideo()
+        return
+      }
+      if (warmVideo && warmVideo.getAttribute('src') === next.url) return
+      clearWarmVideo()
+      const probe = document.createElement('video')
+      probe.preload = 'auto'
+      probe.muted = true
+      probe.setAttribute('aria-hidden', 'true')
+      probe.setAttribute('muted', '')
+      probe.style.display = 'none'
+      probe.src = next.url
+      document.body.appendChild(probe)
+      warmVideo = probe
+    }
 
     function activePlaylist(state) {
       if (!state.enabled || !Array.isArray(state.playlist)) return []
       return state.playlist.filter((item) => item && item.url)
+    }
+
+    /** If a clip stops making progress, nudge it once (reload + play). */
+    function armStall() {
+      if (stallTimer) window.clearTimeout(stallTimer)
+      stallTimer = window.setTimeout(() => {
+        stallTimer = null
+        const layer = videoLayer
+        if (!layer) return
+        const video = layer.querySelector('video')
+        if (!video) return
+        if (!video.paused && video.readyState >= 3) return
+        try {
+          video.load()
+          const again = video.play()
+          if (again && typeof again.catch === 'function') again.catch(() => undefined)
+        } catch (error) {
+          /* ignore */
+        }
+      }, 6000)
     }
 
     function syncVideoLayer(state) {
@@ -2136,6 +2196,7 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
           videoLayer.remove()
           videoLayer = null
         }
+        clearWarmVideo()
         return
       }
       if (!videoLayer && document.body) {
@@ -2149,9 +2210,22 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
         video.setAttribute('muted', '')
         video.setAttribute('playsinline', '')
         video.setAttribute('aria-hidden', 'true')
-        video.addEventListener('playing', () => wallStore.patch({ videoStatus: 'playing' }))
+        video.addEventListener('playing', () => {
+          wallStore.patch({ videoStatus: 'playing' })
+          if (stallTimer) {
+            window.clearTimeout(stallTimer)
+            stallTimer = null
+          }
+        })
         video.addEventListener('pause', () => wallStore.patch({ videoStatus: 'paused' }))
-        video.addEventListener('waiting', () => wallStore.patch({ videoStatus: 'loading' }))
+        video.addEventListener('waiting', () => {
+          wallStore.patch({ videoStatus: 'loading' })
+          armStall()
+        })
+        video.addEventListener('stalled', () => {
+          wallStore.patch({ videoStatus: 'loading' })
+          armStall()
+        })
         video.addEventListener('error', () => wallStore.patch({ videoStatus: 'error' }))
         video.addEventListener('ended', () => {
           const now = store.get()
@@ -2175,6 +2249,17 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
         layer.append(video, tint)
         document.body.appendChild(layer)
         videoLayer = layer
+        if (!visibilityHandler) {
+          visibilityHandler = () => {
+            if (document.hidden) return
+            const current = videoLayer && videoLayer.querySelector('video')
+            if (current && current.paused && store.get().enabled) {
+              const again = current.play()
+              if (again && typeof again.catch === 'function') again.catch(() => undefined)
+            }
+          }
+          document.addEventListener('visibilitychange', visibilityHandler)
+        }
       }
       if (!videoLayer) return
       const video = videoLayer.querySelector('video')
@@ -2211,6 +2296,7 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
       // the user picked it explicitly, and pausing left a dark paused frame.
       const play = video.play()
       if (play && typeof play.catch === 'function') play.catch(() => undefined)
+      warmPlaylist(playlist, playlistIndex)
     }
 
     /* ---- settings file ----------------------------------------------------
@@ -2340,6 +2426,15 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
           if (videoLayer) {
             videoLayer.remove()
             videoLayer = null
+          }
+          clearWarmVideo()
+          if (stallTimer) {
+            window.clearTimeout(stallTimer)
+            stallTimer = null
+          }
+          if (visibilityHandler) {
+            document.removeEventListener('visibilitychange', visibilityHandler)
+            visibilityHandler = null
           }
         }
       })

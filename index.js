@@ -117,16 +117,18 @@ function extFor(contentType) {
   return '.jpg'
 }
 
-async function fetchWithTimeout(url) {
+async function fetchWithTimeout(url, init) {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
   try {
     return await fetch(url, {
       signal: controller.signal,
       redirect: 'follow',
+      ...(init || {}),
       headers: {
         accept: 'application/json,image/*,video/*;q=0.9,*/*;q=0.8',
         'user-agent': 'dsh-neon-theme/0.3 (+local wallpaper picker)',
+        ...((init && init.headers) || {}),
       },
     })
   } finally {
@@ -546,6 +548,37 @@ async function mediaResponse(params, request) {
   const cached = await readCached(key)
   if (cached) {
     return mediaBufferResponse(cached.buffer, mediaTypeFor(cached.ext), range)
+  }
+
+  // Not cached yet: relay a range request straight through so playback starts
+  // on the first bytes instead of waiting for the whole file to download. The
+  // background prefetch (a plain GET) fills the disk cache afterwards.
+  if (range) {
+    try {
+      const relayed = await fetchWithTimeout(target.toString(), { headers: { range } })
+      const relayType = relayed.headers.get('content-type') || ''
+      const relayRange = relayed.headers.get('content-range')
+      if (relayed.status === 206 && relayed.body && relayRange && (relayType.startsWith('video/') || relayType.startsWith('image/'))) {
+        return new Response(relayed.body, {
+          status: 206,
+          headers: {
+            'content-type': relayType,
+            'content-range': relayRange,
+            'accept-ranges': 'bytes',
+            'cache-control': 'no-store',
+          },
+        })
+      }
+      if (relayed.body) {
+        try {
+          await relayed.body.cancel()
+        } catch (error) {
+          /* ignore */
+        }
+      }
+    } catch (error) {
+      /* fall back to the buffered path */
+    }
   }
 
   const upstream = await fetchWithTimeout(target.toString())
