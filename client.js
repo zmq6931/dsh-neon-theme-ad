@@ -1685,7 +1685,7 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
               h(
                 'span',
                 { className: 'dshneon-foot__actions' },
-                h('span', { className: 'dshneon-foot__ver' }, 'v0.11.3'),
+                h('span', { className: 'dshneon-foot__ver' }, 'v0.11.4'),
                 h(
                   'button',
                   {

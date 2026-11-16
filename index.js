@@ -62,7 +62,18 @@ const ANIME_SERIES = {
       'kimetsu_no_yaiba_hashira_geiko-hen',
     ],
   },
-  slam: { label: '灌篮高手', tags: ['slam_dunk'] },
+  slam: {
+    label: '灌篮高手',
+    // Every Slam Dunk tag on the site; the modern movie cuts (The First Slam
+    // Dunk) score highest, then the classic TV moments.
+    tags: [
+      'slam_dunk',
+      'slam_dunk_series',
+      'slam_dunk_movie_1',
+      'slam_dunk_movie_2:_zenkoku_seiha_da!_-_sakuragi_hanamichi',
+      'the_first_slam_dunk',
+    ],
+  },
   dragon: {
     label: '龙珠',
     // Z / Super / the movies and GT carry the Super Saiyan set pieces; merging
@@ -325,21 +336,20 @@ async function mixkitList(page, params) {
  * Anime clips (Sakugabooru, free fan archive, no API key)
  * ------------------------------------------------------------------ */
 
-async function animeClipList(page, params) {
-  const requested = String(params.get('series') || '')
-  const entry = ANIME_SERIES[requested] || ANIME_SERIES.demon
-  const pageSize = 40
-  const tagSets = entry.tags.length > 0 ? entry.tags : ['']
-  const quota = entry.tags.length > 1 ? pageSize * 2 : pageSize
+const animeCatalogCache = new Map()
 
+async function animeCatalog(entry) {
+  const key = entry.label
+  const hit = animeCatalogCache.get(key)
+  if (hit && Date.now() - hit.at < LIST_TTL_MS) return hit.items
+
+  const tagSets = entry.tags.length > 0 ? entry.tags : ['']
   const rows = await Promise.all(
     tagSets.map(async (tag) => {
-      // `order:score` ranks the community's favourite cuts first, so every page
-      // is a highlight reel rather than a random episode frame.
       const tags = (tag ? tag + '+' : '') + 'rating:safe+order:score'
       try {
         const response = await fetchWithTimeout(
-          'https://www.sakugabooru.com/post.json?tags=' + tags + '&limit=' + quota + '&page=' + page,
+          'https://www.sakugabooru.com/post.json?tags=' + tags + '&limit=100&page=1',
         )
         if (!response.ok) return []
         const body = await response.json()
@@ -360,8 +370,17 @@ async function animeClipList(page, params) {
     merged.push(row)
   }
   merged.sort((left, right) => (Number(right.score) || 0) - (Number(left.score) || 0))
+  animeCatalogCache.set(key, { at: Date.now(), items: merged })
+  return merged
+}
 
-  const items = merged.slice(0, pageSize).map((row) => ({
+async function animeClipList(page, params) {
+  const requested = String(params.get('series') || '')
+  const entry = ANIME_SERIES[requested] || ANIME_SERIES.demon
+  const pageSize = 40
+  const catalog = await animeCatalog(entry)
+  const start = (page - 1) * pageSize
+  const items = catalog.slice(start, start + pageSize).map((row) => ({
     id: 'sg-' + row.id,
     kind: 'video',
     thumb: row.preview_url,
@@ -375,8 +394,7 @@ async function animeClipList(page, params) {
     page: 'https://www.sakugabooru.com/post/show/' + row.id,
     tag: entry.label,
   }))
-  // No count endpoint: a full page means there is at least one more.
-  return { lastPage: items.length >= pageSize ? page + 1 : Math.max(1, page), items }
+  return { lastPage: Math.max(1, Math.ceil(catalog.length / pageSize)), items }
 }
 
 /* ------------------------------------------------------------------ *
