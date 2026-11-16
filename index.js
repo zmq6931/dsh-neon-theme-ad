@@ -44,7 +44,14 @@ const ALLOWED_HOSTS = new Set([
   'assets.mixkit.co',
   'www.sakugabooru.com',
   'sakugabooru.com',
+  'archive.org',
 ])
+
+function isAllowedHost(hostname) {
+  const host = String(hostname || '').toLowerCase()
+  // archive.org serves downloads from rotating `dn######.us.archive.org` hosts.
+  return ALLOWED_HOSTS.has(host) || host.endsWith('.archive.org')
+}
 
 const MIXKIT_DEFAULT = ['nature', 'abstract', 'city', 'sci-fi', 'particles', 'space']
 const MIXKIT_ALLOWED = new Set([
@@ -365,6 +372,100 @@ async function mixkitList(page, params) {
  * ------------------------------------------------------------------ */
 
 const animeCatalogCache = new Map()
+const iaTrailerCache = new Map()
+
+// English titles used to look up official trailers (with audio) on Internet
+// Archive; the Sakugabooru archive itself is silent.
+const ANIME_QUERY = {
+  demon: 'Demon Slayer',
+  slam: 'Slam Dunk',
+  slam_movie: 'Slam Dunk',
+  dragon: 'Dragon Ball',
+  tennis: 'Prince of Tennis',
+  onepiece: 'One Piece',
+  yuyu: 'Yu Yu Hakusho',
+  naruto: 'Naruto',
+  bleach: 'Bleach',
+  jujutsu: 'Jujutsu Kaisen',
+  aot: 'Attack on Titan',
+  chainsaw: 'Chainsaw Man',
+  frieren: 'Frieren',
+  mha: 'My Hero Academia',
+  haikyuu: 'Haikyu',
+  kuroko: 'Kuroko no Basket',
+  bluelock: 'Blue Lock',
+  opm: 'One Punch Man',
+  fmab: 'Fullmetal Alchemist',
+  vinland: 'Vinland Saga',
+  eva: 'Evangelion',
+  violet: 'Violet Evergarden',
+  gintama: 'Gintama',
+}
+
+async function iaTrailers(seriesKey, label) {
+  const query = ANIME_QUERY[seriesKey]
+  if (!query) return []
+  const hit = iaTrailerCache.get(seriesKey)
+  if (hit && Date.now() - hit.at < LIST_TTL_MS) return hit.items
+
+  const collect = async (searchQuery, limit) => {
+    const found = []
+    try {
+      const searchUrl =
+        'https://archive.org/advancedsearch.php?q=' +
+        encodeURIComponent(searchQuery) +
+        '&fl%5B%5D=identifier&rows=8&page=1&output=json&sort%5B%5D=downloads+desc'
+      const response = await fetchWithTimeout(searchUrl)
+      const docs = response.ok ? (await response.json())?.response?.docs || [] : []
+      for (const doc of docs) {
+        if (found.length >= limit) break
+        try {
+          const metaResponse = await fetchWithTimeout('https://archive.org/metadata/' + doc.identifier)
+          if (!metaResponse.ok) continue
+          const meta = await metaResponse.json()
+          const file = (meta.files || []).find((entry) => {
+            if (!/\.(mp4|webm)$/i.test(entry.name)) return false
+            const size = Number(entry.size)
+            return size > 1024 * 1024 && size < MAX_CLIP_BYTES
+          })
+          if (!file) continue
+          const url = 'https://archive.org/download/' + doc.identifier + '/' + encodeURIComponent(file.name)
+          found.push({
+            id: 'ia-' + doc.identifier,
+            kind: 'video',
+            thumb: 'https://archive.org/services/img/' + doc.identifier,
+            preview: url,
+            full: url,
+            w: Number(file.width) || 1280,
+            h: Number(file.height) || 720,
+            audio: true,
+            source: 'archive',
+            title: label + ' · 有声片段',
+            page: 'https://archive.org/details/' + doc.identifier,
+            tag: label,
+          })
+        } catch (error) {
+          /* try the next item */
+        }
+      }
+    } catch (error) {
+      /* archive.org is optional */
+    }
+    return found
+  }
+
+  // Official trailers first; if a title has none, accept any short clip the
+  // archive holds for it (still with its original audio track).
+  let items = await collect(
+    `title:(${query}) AND mediatype:movies AND (title:(trailer) OR title:(teaser) OR title:(pv) OR title:(预告))`,
+    3,
+  )
+  if (items.length === 0) {
+    items = await collect(`title:(${query}) AND mediatype:movies`, 2)
+  }
+  iaTrailerCache.set(seriesKey, { at: Date.now(), items })
+  return items
+}
 
 async function animeCatalog(entry) {
   const key = entry.label
@@ -407,11 +508,14 @@ async function animeCatalog(entry) {
 
 async function animeClipList(page, params) {
   const requested = String(params.get('series') || '')
-  const entry = ANIME_SERIES[requested] || ANIME_SERIES.demon
+  const seriesKey = ANIME_SERIES[requested] ? requested : 'demon'
+  const entry = ANIME_SERIES[seriesKey]
+  const [catalog, trailers] = await Promise.all([animeCatalog(entry), iaTrailers(seriesKey, entry.label)])
   const pageSize = 40
-  const catalog = await animeCatalog(entry)
-  const start = (page - 1) * pageSize
-  const items = catalog.slice(start, start + pageSize).map((row) => ({
+  const lead = Math.min(trailers.length, pageSize)
+  const offset = page === 1 ? 0 : (page - 1) * pageSize - lead
+  const size = page === 1 ? pageSize - lead : pageSize
+  const rows = catalog.slice(offset, offset + size).map((row) => ({
     id: 'sg-' + row.id,
     kind: 'video',
     thumb: row.preview_url,
@@ -426,7 +530,9 @@ async function animeClipList(page, params) {
     page: 'https://www.sakugabooru.com/post/show/' + row.id,
     tag: entry.label,
   }))
-  return { lastPage: Math.max(1, Math.ceil(catalog.length / pageSize)), items }
+  const items = page === 1 ? trailers.slice(0, lead).concat(rows) : rows
+  const total = catalog.length + lead
+  return { lastPage: Math.max(1, Math.ceil(total / pageSize)), items }
 }
 
 /* ------------------------------------------------------------------ *
@@ -634,7 +740,7 @@ async function audioTrackResponse(params) {
   if (target.protocol !== 'http:' && target.protocol !== 'https:') {
     return jsonResponse({ error: 'bad protocol' }, 400)
   }
-  if (!ALLOWED_HOSTS.has(target.hostname.toLowerCase())) {
+  if (!isAllowedHost(target.hostname)) {
     return jsonResponse({ error: 'host not allowed' }, 403)
   }
   const key = target.toString()
@@ -693,7 +799,7 @@ async function mediaResponse(params, request) {
   if (target.protocol !== 'http:' && target.protocol !== 'https:') {
     return jsonResponse({ error: 'bad protocol' }, 400)
   }
-  if (!ALLOWED_HOSTS.has(target.hostname.toLowerCase())) {
+  if (!isAllowedHost(target.hostname)) {
     return jsonResponse({ error: 'host not allowed' }, 403)
   }
 
@@ -744,7 +850,7 @@ async function mediaResponse(params, request) {
   } catch (error) {
     /* keep the requested host */
   }
-  if (!ALLOWED_HOSTS.has(finalHost)) return jsonResponse({ error: 'redirect not allowed' }, 502)
+  if (!isAllowedHost(finalHost)) return jsonResponse({ error: 'redirect not allowed' }, 502)
 
   const contentType = upstream.headers.get('content-type') || ''
   if (!contentType.startsWith('image/') && !contentType.startsWith('video/')) {

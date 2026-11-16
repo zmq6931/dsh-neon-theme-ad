@@ -153,6 +153,7 @@ index.js   # Host 端：壁纸代理（/neon-theme/api/list、/media）与设置
   - **Microsoft Bing 每日一图**：版权归 Microsoft；
   - **Picsum**：基于 Unsplash 图片，适用 Unsplash License；
   - **Mixkit**：适用 Mixkit Free License；
+  - **Internet Archive**：公开存档的预告片 / 片段，版权归原权利人，插件只做本机缓存，仅供个人欣赏；
   - **Sakugabooru**：社区归档的动画作画片段，动画作品版权归各制作委员会 / 版权方所有，**仅供个人欣赏，请勿商用或再分发**。
 - 插件只在本机代理取回并缓存上述素材（`$DSH_HOME/neon-theme-cache`），**不上传任何素材**；由此产生的版权与合规风险由使用者自行承担。
 - 请自行确认所在地法律法规；若你是版权方并认为使用不当，请提 Issue，我会移除对应来源或分类。
