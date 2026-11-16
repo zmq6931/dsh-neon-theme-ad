@@ -213,6 +213,9 @@ function wallhavenSource(kind, categories, query) {
       // same toplist; page 2 continues the same shuffled order.
       search.set('sorting', 'random')
       search.set('seed', String(seed))
+    } else if (query) {
+      // `toplist` returns nothing when combined with a search query.
+      search.set('sorting', 'relevance')
     } else {
       search.set('sorting', 'toplist')
     }
@@ -428,6 +431,8 @@ const SOURCES = {
   people: wallhavenSource('people', '100'),
   cartoon: wallhavenSource('cartoon', '111', 'cartoon'),
   animal: wallhavenSource('animal', '111', 'animal'),
+  slamdunk: wallhavenSource('slamdunk', '111', 'slam dunk'),
+  sakuragi: wallhavenSource('sakuragi', '111', 'sakuragi'),
   anime: wallhavenSource('anime', '010'),
   cyber: wallhavenSource('cyber', '111', 'cyberpunk'),
   space: wallhavenSource('space', '111', 'space'),

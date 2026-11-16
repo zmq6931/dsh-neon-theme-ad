@@ -103,6 +103,8 @@ window.__ModuleLoader__.load({
         wallPeople: '人物',
         wallCartoon: '卡通',
         wallAnimal: '动物',
+        wallSlamArt: '灌篮壁纸',
+        wallSakuragi: '樱木花道',
         wallAnime: '动漫',
         wallCyber: '赛博',
         wallSpace: '太空',
@@ -214,6 +216,8 @@ window.__ModuleLoader__.load({
         wallPeople: 'People',
         wallCartoon: 'Cartoon',
         wallAnimal: 'Animals',
+        wallSlamArt: 'Slam Dunk art',
+        wallSakuragi: 'Sakuragi',
         wallAnime: 'Anime',
         wallCyber: 'Cyber',
         wallSpace: 'Space',
@@ -1729,7 +1733,7 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
               h(
                 'span',
                 { className: 'dshneon-foot__actions' },
-                h('span', { className: 'dshneon-foot__ver' }, 'v0.12.0'),
+                h('span', { className: 'dshneon-foot__ver' }, 'v0.12.1'),
                 h(
                   'button',
                   {
@@ -1841,6 +1845,8 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
       { id: 'people', kind: 'image', key: 'wallPeople' },
       { id: 'cartoon', kind: 'image', key: 'wallCartoon' },
       { id: 'animal', kind: 'image', key: 'wallAnimal' },
+      { id: 'slamdunk', kind: 'image', key: 'wallSlamArt' },
+      { id: 'sakuragi', kind: 'image', key: 'wallSakuragi' },
       { id: 'anime', kind: 'image', key: 'wallAnime' },
       { id: 'cyber', kind: 'image', key: 'wallCyber' },
       { id: 'space', kind: 'image', key: 'wallSpace' },
