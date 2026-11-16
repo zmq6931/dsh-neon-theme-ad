@@ -15,9 +15,10 @@
  *     would forget the chosen skin and wallpaper.
  */
 import { createHash } from 'node:crypto'
-import { promises as fs } from 'node:fs'
+import { promises as fs, createReadStream } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
+import { Readable } from 'node:stream'
 
 const API_PREFIX = '/neon-theme/api'
 const HOME_DIR = process.env.DSH_HOME || join(homedir(), '.dsh')
@@ -25,7 +26,8 @@ const CACHE_DIR = join(HOME_DIR, 'neon-theme-cache')
 const SETTINGS_FILE = join(HOME_DIR, 'neon-theme-settings.json')
 const CACHE_LIMIT = 80
 const MAX_CACHE_BYTES = 1.2 * 1024 * 1024 * 1024
-const MAX_MEDIA_BYTES = 48 * 1024 * 1024
+const MAX_MEDIA_BYTES = 64 * 1024 * 1024
+const MAX_CLIP_BYTES = 24 * 1024 * 1024
 const MAX_SETTINGS_BYTES = 64 * 1024
 const LIST_TTL_MS = 10 * 60 * 1000
 const FETCH_TIMEOUT_MS = 20000
@@ -391,6 +393,9 @@ async function animeCatalog(entry) {
     if (!row || seen.has(row.id)) continue
     if (!(row.file_ext === 'mp4' || row.file_ext === 'webm')) continue
     if (!row.file_url || !row.preview_url) continue
+    // A wallpaper clip has to buffer instantly; the archive also holds 100 MB+
+    // source captures, which stutter no matter how they are served.
+    if (Number(row.file_size) > MAX_CLIP_BYTES) continue
     seen.add(row.id)
     merged.push(row)
   }
@@ -477,16 +482,52 @@ function cacheKey(url) {
   return createHash('sha1').update(url).digest('hex')
 }
 
-async function readCached(key) {
+async function findCachedFile(key) {
   for (const ext of ['.jpg', '.png', '.webp', '.gif', '.avif', '.mp4', '.webm']) {
+    const file = join(CACHE_DIR, key + ext)
     try {
-      const buffer = await fs.readFile(join(CACHE_DIR, key + ext))
-      return { buffer, ext }
+      const stat = await fs.stat(file)
+      if (stat.isFile() && stat.size > 0) return { path: file, ext, size: stat.size }
     } catch (error) {
       /* try the next extension */
     }
   }
   return null
+}
+
+/**
+ * Serve a cached file as a stream. Reading the whole file per request made the
+ * 30 MB clips hitch on every seek, so ranges are streamed straight off disk.
+ */
+function streamFileResponse(filePath, size, contentType, rangeHeader) {
+  const base = {
+    'content-type': contentType,
+    'accept-ranges': 'bytes',
+    'cache-control': 'public, max-age=31536000, immutable',
+  }
+  let start = 0
+  let end = size - 1
+  let status = 200
+  if (rangeHeader) {
+    const match = /^bytes=(\d*)-(\d*)$/.exec(String(rangeHeader).trim())
+    if (match) {
+      if (match[1] === '' && match[2] !== '') {
+        start = Math.max(0, size - Number(match[2]))
+      } else if (match[1] !== '') {
+        start = Number(match[1])
+        if (match[2] !== '') end = Math.min(Number(match[2]), size - 1)
+      }
+      if (!Number.isFinite(start) || !Number.isFinite(end) || start > end || start >= size) {
+        return new Response(null, { status: 416, headers: { 'content-range': 'bytes */' + size } })
+      }
+      status = 206
+    }
+  }
+  const length = end - start + 1
+  const headers = { ...base, 'content-length': String(length) }
+  if (status === 206) headers['content-range'] = 'bytes ' + start + '-' + end + '/' + size
+  const stream = createReadStream(filePath, { start, end })
+  return new Response(Readable.toWeb(stream), { status, headers })
 }
 
 function mediaTypeFor(ext) {
@@ -572,6 +613,32 @@ function mediaBufferResponse(buffer, contentType, rangeHeader) {
   })
 }
 
+const warming = new Set()
+
+/** Pull a whole file into the disk cache in the background. */
+async function warmMediaCache(target, key) {
+  const id = key
+  if (warming.has(id)) return
+  warming.add(id)
+  try {
+    const response = await fetchWithTimeout(target.toString())
+    if (!response.ok) return
+    const type = response.headers.get('content-type') || ''
+    if (!type.startsWith('video/') && !type.startsWith('image/')) return
+    const declared = Number(response.headers.get('content-length') || 0)
+    if (declared > MAX_MEDIA_BYTES) return
+    const buffer = Buffer.from(await response.arrayBuffer())
+    if (buffer.length > MAX_MEDIA_BYTES) return
+    await ensureCacheDir()
+    await fs.writeFile(join(CACHE_DIR, key + extFor(type)), buffer).catch(() => undefined)
+    void pruneCache()
+  } catch (error) {
+    /* warming is best effort */
+  } finally {
+    warming.delete(id)
+  }
+}
+
 async function mediaResponse(params, request) {
   const raw = params.get('src')
   if (!raw) return jsonResponse({ error: 'missing src' }, 400)
@@ -590,20 +657,21 @@ async function mediaResponse(params, request) {
 
   const range = request && request.headers ? request.headers.get('range') : null
   const key = cacheKey(target.toString())
-  const cached = await readCached(key)
-  if (cached) {
-    return mediaBufferResponse(cached.buffer, mediaTypeFor(cached.ext), range)
+  const cachedFile = await findCachedFile(key)
+  if (cachedFile) {
+    return streamFileResponse(cachedFile.path, cachedFile.size, mediaTypeFor(cachedFile.ext), range)
   }
 
   // Not cached yet: relay a range request straight through so playback starts
-  // on the first bytes instead of waiting for the whole file to download. The
-  // background prefetch (a plain GET) fills the disk cache afterwards.
+  // on the first bytes instead of waiting for the whole file to download, and
+  // fill the disk cache in the background so later ranges come from disk.
   if (range) {
     try {
       const relayed = await fetchWithTimeout(target.toString(), { headers: { range } })
       const relayType = relayed.headers.get('content-type') || ''
       const relayRange = relayed.headers.get('content-range')
       if (relayed.status === 206 && relayed.body && relayRange && (relayType.startsWith('video/') || relayType.startsWith('image/'))) {
+        void warmMediaCache(target, key)
         return new Response(relayed.body, {
           status: 206,
           headers: {

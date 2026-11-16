@@ -662,7 +662,7 @@ html.dshneon-wall-in body::before{
   animation:dshneon-wall-fade .6s ease-out, dshneon-wall-pan 90s ease-in-out infinite alternate;
 }
 .dshneon-video-layer{position:fixed;inset:0;z-index:-1;pointer-events:none;overflow:hidden;background:#04060e}
-.dshneon-video-layer__video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.97;filter:brightness(var(--fx-wall-bright,1)) saturate(1.1) contrast(1.05)}
+.dshneon-video-layer__video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.97;filter:brightness(var(--fx-wall-bright,1)) saturate(1.08);will-change:filter;transform:translateZ(0);contain:paint}
 .dshneon-video-layer__tint{position:absolute;inset:0;background:linear-gradient(180deg,rgba(4,6,14,.02),rgba(4,6,14,.08))}
 @keyframes dshneon-wall-pan{
   0%{transform:scale(1.03) translate3d(-1%,-0.5%,0)}
@@ -756,7 +756,6 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
   max-height:min(660px,calc(100vh - 150px));overflow:auto;padding:0;
   border-radius:18px;border:1px solid var(--dsw-alias-border-l2);
   background:color-mix(in srgb,var(--dsw-alias-bg-layer-1) 94%,transparent);
-  backdrop-filter:blur(18px) saturate(125%);
   color:var(--dsw-alias-label-primary);
   box-shadow:0 20px 52px rgba(0,0,0,.36),inset 0 0 0 1px color-mix(in srgb,var(--fx-accent) 20%,transparent);
   animation:dshneon-up .2s ease-out;
@@ -767,7 +766,6 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
   position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:9px;
   padding:13px 14px 9px;
   background:color-mix(in srgb,var(--dsw-alias-bg-layer-1) 95%,transparent);
-  backdrop-filter:blur(10px);
   border-bottom:1px solid color-mix(in srgb,var(--dsw-alias-border-l2) 70%,transparent);
 }
 .dshneon-head__dot{width:9px;height:9px;border-radius:50%;flex:none;background:var(--fx-accent);box-shadow:0 0 10px var(--fx-accent)}
@@ -857,7 +855,6 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
   padding:10px 14px 12px;
   border-top:1px solid var(--dsw-alias-border-l2);
   background:color-mix(in srgb,var(--dsw-alias-bg-layer-1) 95%,transparent);
-  backdrop-filter:blur(10px);
   font-size:11px;color:var(--dsw-alias-label-secondary);
 }
 .dshneon-foot__toggle{display:flex;align-items:center;gap:7px;min-width:0;font-size:12px;color:var(--dsw-alias-label-primary)}
@@ -1753,7 +1750,7 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
               h(
                 'span',
                 { className: 'dshneon-foot__actions' },
-                h('span', { className: 'dshneon-foot__ver' }, 'v0.12.4'),
+                h('span', { className: 'dshneon-foot__ver' }, 'v0.12.6'),
                 h(
                   'button',
                   {
@@ -2207,6 +2204,7 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
     let videoLayer = null
     let playlistIndex = 0
     let warmVideo = null
+    let warmTimer = null
     let stallTimer = null
     let visibilityHandler = null
 
@@ -2313,6 +2311,13 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
           armStall()
         })
         video.addEventListener('error', () => wallStore.patch({ videoStatus: 'error' }))
+        video.addEventListener('timeupdate', () => {
+          if (!warmTimer || !video.duration) return
+          if (video.currentTime / video.duration < 0.5) return
+          window.clearTimeout(warmTimer)
+          warmTimer = null
+          warmPlaylist(activePlaylist(store.get()), playlistIndex)
+        })
         video.addEventListener('ended', () => {
           const now = store.get()
           const list = activePlaylist(now)
@@ -2382,7 +2387,16 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
       // the user picked it explicitly, and pausing left a dark paused frame.
       const play = video.play()
       if (play && typeof play.catch === 'function') play.catch(() => undefined)
-      warmPlaylist(playlist, playlistIndex)
+      // Prefetch the next clip only once the current one has had time to
+      // buffer; downloading both at once is what caused the hitching.
+      if (warmTimer) window.clearTimeout(warmTimer)
+      warmTimer = window.setTimeout(
+        () => {
+          warmTimer = null
+          warmPlaylist(activePlaylist(store.get()), playlistIndex)
+        },
+        playlist.length > 1 ? 5000 : 0,
+      )
     }
 
     /* ---- settings file ----------------------------------------------------
@@ -2514,7 +2528,10 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
             videoLayer = null
           }
           clearWarmVideo()
-          if (stallTimer) {
+          if (warmTimer) {
+            window.clearTimeout(warmTimer)
+            warmTimer = null
+          }          if (stallTimer) {
             window.clearTimeout(stallTimer)
             stallTimer = null
           }
