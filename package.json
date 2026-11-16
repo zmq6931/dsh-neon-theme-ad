@@ -1,6 +1,6 @@
 {
   "name": "dsh-neon-theme-ad",
-  "version": "0.13.0",
+  "version": "0.14.0",
   "type": "module",
   "description": "Neon theme engine for the DSH Web GUI: animated code-drawn backdrops, a breathing neon window frame, a glowing composer ring, ten skins with category rotation and time-of-day switching, and a wallpaper shelf (Wallhaven, Bing daily, Picsum, Mixkit live video, Sakugabooru anime highlights) with a local caching proxy, playlists and host-side settings persistence.",
   "license": "MIT",

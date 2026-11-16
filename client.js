@@ -116,6 +116,11 @@ window.__ModuleLoader__.load({
         wallTabVideo: '动态视频',
         wallGroupClips: '素材',
         wallGroupAnime: '番剧',
+        localLabel: '本地',
+        localPick: '选择视频…',
+        localClear: '移除',
+        audioNone: '无声',
+        audioHas: '有声',
         wallLoop: '循环播放',
         wallSound: '声音',
         wallVolume: '音量',
@@ -129,6 +134,7 @@ window.__ModuleLoader__.load({
         videoLoading: '缓冲中',
         videoError: '加载失败',
         videoBlocked: '点击页面播放声音',
+        videoSilent: '此片段没有音轨，已保持静音',
         animeSlam: '灌篮高手',
         animeSlamMovie: '灌篮剧场版',
         animeTop: '全网高光',
@@ -232,6 +238,11 @@ window.__ModuleLoader__.load({
         wallTabVideo: 'Live video',
         wallGroupClips: 'Clips',
         wallGroupAnime: 'Anime',
+        localLabel: 'Local',
+        localPick: 'Pick video…',
+        localClear: 'Remove',
+        audioNone: 'silent',
+        audioHas: 'sound',
         wallLoop: 'Loop',
         wallSound: 'Sound',
         wallVolume: 'Volume',
@@ -245,6 +256,7 @@ window.__ModuleLoader__.load({
         videoLoading: 'buffering',
         videoError: 'failed to load',
         videoBlocked: 'click the page to unmute',
+        videoSilent: 'this clip has no audio track',
         animeSlam: 'Slam Dunk',
         animeSlamMovie: 'Slam Dunk movies',
         animeTop: 'Top cuts',
@@ -921,6 +933,11 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
   display:grid;place-items:center;font-size:11px;line-height:1;cursor:pointer;
   color:#fff;background:rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.45);
 }
+.dshneon-wall__audio{
+  position:absolute;right:4px;bottom:3px;font-size:9px;line-height:1;
+  padding:1px 3px;border-radius:999px;background:rgba(0,0,0,.55);color:#fff;
+}
+.dshneon-wall__audio.is-sound{background:color-mix(in srgb,var(--fx-accent) 70%,#000)}
 .dshneon-wall__check.is-on{
   background:color-mix(in srgb,var(--fx-accent) 78%,#000);
   border-color:color-mix(in srgb,var(--fx-accent) 90%,#fff);
@@ -1220,6 +1237,23 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
               h(
                 'div',
                 { className: 'dshneon-wallbar' },
+                h('span', { className: 'dshneon-wallgroup-label' }, tr('localLabel')),
+                h(
+                  'button',
+                  { type: 'button', className: 'dshneon-chip', onClick: () => props.onLocalPick() },
+                  tr('localPick'),
+                ),
+                current && current.local
+                  ? h(
+                      'button',
+                      { type: 'button', className: 'dshneon-chip', onClick: () => props.onLocalClear() },
+                      tr('localClear'),
+                    )
+                  : null,
+              ),
+              h(
+                'div',
+                { className: 'dshneon-wallbar' },
                 h('span', { className: 'dshneon-wallgroup-label' }, tr('wallGroupClips')),
                 clipChips.map(chip),
               ),
@@ -1299,6 +1333,17 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
                         selectedIds.has(item.id) ? '\u2713' : '+',
                       )
                     : null,
+                  isVideo
+                    ? h(
+                        'span',
+                        {
+                          className: 'dshneon-wall__audio' + (item.audio === false ? ' is-mute' : ' is-sound'),
+                          title: item.audio === false ? tr('audioNone') : tr('audioHas'),
+                          'aria-label': item.audio === false ? tr('audioNone') : tr('audioHas'),
+                        },
+                        item.audio === false ? '\u{1F507}' : '\u{1F50A}',
+                      )
+                    : null,
                   isVideo && Number(item.score) >= 300
                     ? h(
                         'span',
@@ -1313,6 +1358,9 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
             )
           : null,
         state.loading ? h('div', { className: 'dshneon-row__hint' }, tr('wallLoading')) : null,
+        state.wallSound && current && current.audio === false
+          ? h('div', { className: 'dshneon-row__hint' }, tr('videoSilent'))
+          : null,
         playlist.length > 0 || (current && current.kind === 'video')
           ? h(
               'div',
@@ -1640,6 +1688,8 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
               onSound: (value) => update({ wallSound: value }),
               onVolume: (value) => update({ wallVolume: value }),
               onToggle: togglePlaylist,
+              onLocalPick: openLocalPicker,
+              onLocalClear: () => store.set({ wall: null }),
               onClearPlaylist: () => store.set({ playlist: [] }),
               onApply: applyWallpaper,
               onClear: () => store.set({ wall: null }),
@@ -1789,7 +1839,7 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
               h(
                 'span',
                 { className: 'dshneon-foot__actions' },
-                h('span', { className: 'dshneon-foot__ver' }, 'v0.13.0'),
+                h('span', { className: 'dshneon-foot__ver' }, 'v0.14.0'),
                 h(
                   'button',
                   {
@@ -2226,6 +2276,92 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
       store.set({ playlist: list })
     }
 
+    const LOCAL_DB = 'dsh-neon-theme-local'
+    let localInput = null
+
+    function localDb() {
+      return new Promise((resolve, reject) => {
+        const request = window.indexedDB.open(LOCAL_DB, 1)
+        request.onupgradeneeded = () => {
+          if (!request.result.objectStoreNames.contains('media')) request.result.createObjectStore('media')
+        }
+        request.onsuccess = () => resolve(request.result)
+        request.onerror = () => reject(request.error)
+      })
+    }
+
+    async function saveLocalVideo(blob) {
+      try {
+        const db = await localDb()
+        await new Promise((resolve, reject) => {
+          const tx = db.transaction('media', 'readwrite')
+          tx.objectStore('media').put(blob, 'video')
+          tx.oncomplete = () => resolve()
+          tx.onerror = () => reject(tx.error)
+        })
+      } catch (error) {
+        /* persistence is best effort */
+      }
+    }
+
+    async function readLocalVideo() {
+      try {
+        const db = await localDb()
+        return await new Promise((resolve) => {
+          const tx = db.transaction('media', 'readonly')
+          const request = tx.objectStore('media').get('video')
+          request.onsuccess = () => resolve(request.result || null)
+          request.onerror = () => resolve(null)
+        })
+      } catch (error) {
+        return null
+      }
+    }
+
+    async function pickLocalVideo(file) {
+      if (!file || (file.type && !file.type.startsWith('video/'))) return
+      const url = URL.createObjectURL(file)
+      void saveLocalVideo(file)
+      store.set({
+        wall: {
+          id: 'local-' + Date.now(),
+          kind: 'video',
+          url,
+          thumb: '',
+          title: file.name,
+          audio: true,
+          local: true,
+        },
+        playlist: [],
+      })
+    }
+
+    function openLocalPicker() {
+      if (!localInput) {
+        localInput = document.createElement('input')
+        localInput.type = 'file'
+        localInput.accept = 'video/*'
+        localInput.style.display = 'none'
+        localInput.addEventListener('change', () => {
+          const file = localInput.files && localInput.files[0]
+          if (file) void pickLocalVideo(file)
+          localInput.value = ''
+        })
+        document.body.appendChild(localInput)
+      }
+      localInput.click()
+    }
+
+    /** A local file only lives as a blob URL; rebuild it after a reload. */
+    async function restoreLocalVideo() {
+      const wall = store.get().wall
+      if (!wall || !wall.local) return
+      const blob = await readLocalVideo()
+      if (!blob) return
+      const url = URL.createObjectURL(blob)
+      store.set({ wall: { ...store.get().wall, url } })
+    }
+
     function flashWallpaper() {
       const root = document.documentElement
       if (!root) return
@@ -2443,7 +2579,7 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
       }
       // A chosen video wallpaper keeps playing even under "reduce motion":
       // the user picked it explicitly, and pausing left a dark paused frame.
-      const wantSound = state.wallSound === true
+      const wantSound = state.wallSound === true && !(current && current.audio === false)
       video.muted = !wantSound
       if (wantSound) {
         video.volume = Math.min(1, Math.max(0, (Number(state.wallVolume) || 0) / 100))
@@ -2577,9 +2713,13 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
             if (disposed) return
             remoteSettingsReady = true
             if (remote && Object.keys(remote).length > 0) store.set(remote)
+            void restoreLocalVideo()
           })
           .catch(() => {
-            if (!disposed) remoteSettingsReady = true
+            if (!disposed) {
+              remoteSettingsReady = true
+              void restoreLocalVideo()
+            }
           })
 
         return () => {
@@ -2613,6 +2753,10 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
             document.removeEventListener('pointerdown', audioUnlockHandler, true)
             document.removeEventListener('keydown', audioUnlockHandler, true)
             audioUnlockHandler = null
+          }
+          if (localInput) {
+            localInput.remove()
+            localInput = null
           }
         }
       })

@@ -317,6 +317,7 @@ async function mixkitCatalog(categories) {
     full: 'https://assets.mixkit.co/videos/' + entry.id + '/' + entry.id + '-720.mp4',
     w: 1280,
     h: 720,
+    audio: false,
     source: 'mixkit',
     title: entry.category,
     page: 'https://mixkit.co/free-stock-video/' + entry.category + '/',
@@ -419,6 +420,7 @@ async function animeClipList(page, params) {
     w: row.width,
     h: row.height,
     score: Number(row.score) || 0,
+    audio: false,
     source: 'sakugabooru',
     title: entry.label + ' · ' + (Number(row.score) || 0) + ' 分',
     page: 'https://www.sakugabooru.com/post/show/' + row.id,
@@ -613,6 +615,46 @@ function mediaBufferResponse(buffer, contentType, rangeHeader) {
   })
 }
 
+/**
+ * Whether a media file carries an audio track. The range is small (the moov
+ * atom sits at the front), and results are cached per URL, so a selection can
+ * be labelled "有声 / 无声" without downloading the clip.
+ */
+const audioProbeCache = new Map()
+
+async function audioTrackResponse(params) {
+  const raw = params.get('src')
+  if (!raw) return jsonResponse({ error: 'missing src' }, 400)
+  let target
+  try {
+    target = new URL(raw)
+  } catch (error) {
+    return jsonResponse({ error: 'bad src' }, 400)
+  }
+  if (target.protocol !== 'http:' && target.protocol !== 'https:') {
+    return jsonResponse({ error: 'bad protocol' }, 400)
+  }
+  if (!ALLOWED_HOSTS.has(target.hostname.toLowerCase())) {
+    return jsonResponse({ error: 'host not allowed' }, 403)
+  }
+  const key = target.toString()
+  if (audioProbeCache.has(key)) return jsonResponse({ audio: audioProbeCache.get(key) })
+
+  let audio = false
+  try {
+    const response = await fetchWithTimeout(key, { headers: { range: 'bytes=0-524287' } })
+    if (response.ok) {
+      const buffer = Buffer.from(await response.arrayBuffer())
+      const head = buffer.toString('latin1')
+      audio = head.includes('soun') || head.includes('mp4a') || head.includes('Opus')
+    }
+  } catch (error) {
+    /* unknown -> treat as silent */
+  }
+  audioProbeCache.set(key, audio)
+  return jsonResponse({ audio })
+}
+
 const warming = new Set()
 
 /** Pull a whole file into the disk cache in the background. */
@@ -802,6 +844,7 @@ async function handleRequest(request) {
   const rest = path.slice(API_PREFIX.length)
   try {
     if (rest === '/list') return await listResponse(url.searchParams)
+    if (rest === '/audio') return await audioTrackResponse(url.searchParams)
     if (rest === '/media' || rest === '/img') return await mediaResponse(url.searchParams, request)
     return jsonResponse({ error: 'not found' }, 404)
   } catch (error) {
