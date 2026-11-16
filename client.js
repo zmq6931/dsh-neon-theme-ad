@@ -124,6 +124,14 @@ window.__ModuleLoader__.load({
         wallLoop: '循环播放',
         wallSound: '声音',
         wallVolume: '音量',
+        musicLabel: '背景音乐',
+        musicStation: '电台',
+        musicVolume: '音乐音量',
+        music_groovesalad: '环境 · Groove Salad',
+        music_lush: '人声 · Lush',
+        music_dronezone: '氛围 · Drone Zone',
+        music_deepspaceone: '太空 · Deep Space',
+        music_indiepop: '独立流行',
         wallCheck: '加入播放列表',
         playlistActive: '播放列表',
         playlistHint: '勾选的视频会依次自动循环',
@@ -246,6 +254,14 @@ window.__ModuleLoader__.load({
         wallLoop: 'Loop',
         wallSound: 'Sound',
         wallVolume: 'Volume',
+        musicLabel: 'Background music',
+        musicStation: 'Station',
+        musicVolume: 'Music volume',
+        music_groovesalad: 'Ambient · Groove Salad',
+        music_lush: 'Vocal · Lush',
+        music_dronezone: 'Drone · Drone Zone',
+        music_deepspaceone: 'Space · Deep Space',
+        music_indiepop: 'Indie pop',
         wallCheck: 'Add to playlist',
         playlistActive: 'Playlist',
         playlistHint: 'Checked clips rotate automatically',
@@ -421,6 +437,9 @@ window.__ModuleLoader__.load({
       wallLoop: true,
       wallSound: false,
       wallVolume: 40,
+      musicOn: false,
+      musicVolume: 35,
+      musicStation: 'groovesalad',
       playlist: [],
       wall: null,
       settingsVersion: 3,
@@ -464,6 +483,9 @@ window.__ModuleLoader__.load({
       next.wallLoop = next.wallLoop !== false
       next.wallSound = next.wallSound === true
       next.wallVolume = clamp(next.wallVolume, 0, 100)
+      next.musicOn = next.musicOn === true
+      next.musicVolume = clamp(next.musicVolume, 0, 100)
+      next.musicStation = typeof next.musicStation === 'string' ? next.musicStation : 'groovesalad'
       next.playlist = Array.isArray(next.playlist)
         ? next.playlist.map(sanitizeWall).filter(Boolean).slice(0, 12)
         : []
@@ -1472,6 +1494,37 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
               onChange: props.onVolume,
             })
           : null,
+        h(
+          'div',
+          { className: 'dshneon-row' },
+          h('div', { className: 'dshneon-row__text' }, h('span', { className: 'dshneon-row__label' }, tr('musicLabel'))),
+          h(Switch, { checked: props.music === true, label: tr('musicLabel'), onChange: props.onMusic }),
+        ),
+        props.music
+          ? h(
+              'div',
+              { className: 'dshneon-row' },
+              h('span', { className: 'dshneon-row__label' }, tr('musicStation')),
+              h(
+                'select',
+                {
+                  className: 'dshneon-select dshneon-wallselect',
+                  value: props.musicStation,
+                  onChange: (event) => props.onMusicStation(event.target.value),
+                },
+                Object.keys(MUSIC_STATIONS).map((id) =>
+                  h('option', { key: id, value: id }, tr('music_' + id)),
+                ),
+              ),
+            )
+          : null,
+        props.music
+          ? h(Range, {
+              value: props.musicVolume,
+              label: tr('musicVolume'),
+              onChange: props.onMusicVolume,
+            })
+          : null,
         current
           ? h(
               'div',
@@ -1682,11 +1735,17 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
               loop: state.wallLoop,
               sound: state.wallSound,
               volume: state.wallVolume,
+              music: state.musicOn,
+              musicVolume: state.musicVolume,
+              musicStation: state.musicStation,
               playlist: state.playlist,
               onBright: (value) => update({ wallBright: value }),
               onLoop: (value) => update({ wallLoop: value }),
               onSound: (value) => update({ wallSound: value }),
               onVolume: (value) => update({ wallVolume: value }),
+              onMusic: (value) => update({ musicOn: value }),
+              onMusicStation: (value) => update({ musicStation: value }),
+              onMusicVolume: (value) => update({ musicVolume: value }),
               onToggle: togglePlaylist,
               onLocalPick: openLocalPicker,
               onLocalClear: () => store.set({ wall: null }),
@@ -1839,7 +1898,7 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
               h(
                 'span',
                 { className: 'dshneon-foot__actions' },
-                h('span', { className: 'dshneon-foot__ver' }, 'v0.14.0'),
+                h('span', { className: 'dshneon-foot__ver' }, 'v0.15.0'),
                 h(
                   'button',
                   {
@@ -2378,6 +2437,47 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
      */
     let videoLayer = null
     let playlistIndex = 0
+    let musicAudio = null
+
+    const MUSIC_STATIONS = {
+      groovesalad: 'https://ice1.somafm.com/groovesalad-128-mp3',
+      lush: 'https://ice1.somafm.com/lush-128-mp3',
+      dronezone: 'https://ice1.somafm.com/dronezone-128-mp3',
+      deepspaceone: 'https://ice1.somafm.com/deepspaceone-128-mp3',
+      indiepop: 'https://ice1.somafm.com/indiepop-128-mp3',
+    }
+
+    /** Background music from free SomaFM streams, independent of the clips. */
+    function syncMusic(state) {
+      const on = state.musicOn === true && state.enabled !== false
+      if (!on) {
+        if (musicAudio) {
+          try {
+            musicAudio.pause()
+          } catch (error) {
+            /* ignore */
+          }
+        }
+        return
+      }
+      if (!document.body) return
+      if (!musicAudio) {
+        musicAudio = document.createElement('audio')
+        musicAudio.setAttribute('aria-hidden', 'true')
+        musicAudio.style.display = 'none'
+        musicAudio.preload = 'none'
+        document.body.appendChild(musicAudio)
+      }
+      const url = MUSIC_STATIONS[state.musicStation] || MUSIC_STATIONS.groovesalad
+      if (musicAudio.getAttribute('src') !== url) {
+        musicAudio.src = url
+      }
+      musicAudio.volume = Math.min(1, Math.max(0, (Number(state.musicVolume) || 0) / 100))
+      if (musicAudio.paused) {
+        const play = musicAudio.play()
+        if (play && typeof play.catch === 'function') play.catch(() => armAudioUnlock())
+      }
+    }
     let warmVideo = null
     let warmTimer = null
     let stallTimer = null
@@ -2391,10 +2491,15 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
         document.removeEventListener('keydown', unlock, true)
         audioUnlockHandler = null
         const video = videoLayer && videoLayer.querySelector('video')
-        if (!video) return
-        video.muted = false
-        const play = video.play()
-        if (play && typeof play.catch === 'function') play.catch(() => undefined)
+        if (video) {
+          video.muted = false
+          const play = video.play()
+          if (play && typeof play.catch === 'function') play.catch(() => undefined)
+        }
+        if (musicAudio) {
+          const playMusic = musicAudio.play()
+          if (playMusic && typeof playMusic.catch === 'function') playMusic.catch(() => undefined)
+        }
       }
       audioUnlockHandler = unlock
       document.addEventListener('pointerdown', unlock, true)
@@ -2652,6 +2757,7 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
       const sync = () => {
         applyToDocument(store.get())
         syncVideoLayer(store.get())
+        syncMusic(store.get())
       }
 
       const stopTimers = () => {
@@ -2753,6 +2859,16 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
             document.removeEventListener('pointerdown', audioUnlockHandler, true)
             document.removeEventListener('keydown', audioUnlockHandler, true)
             audioUnlockHandler = null
+          }
+          if (musicAudio) {
+            try {
+              musicAudio.pause()
+              musicAudio.removeAttribute('src')
+              musicAudio.remove()
+            } catch (error) {
+              /* ignore */
+            }
+            musicAudio = null
           }
           if (localInput) {
             localInput.remove()
