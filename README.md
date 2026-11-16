@@ -4,6 +4,8 @@ DSH Web 界面的主题插件：**纯代码绘制的动态背景** + **免费壁
 
 没有一张图片随包分发：十款皮肤全部用 CSS 渐变与动画画出来，任意分辨率都清晰；壁纸在你点选时才从免费壁纸库取回并缓存到本机。
 
+> 第三方插件，与 DeepSeek 官方无关；壁纸与视频素材的版权归各来源站点所有。使用前请阅读 [免责声明](#免责声明)。
+
 ## 安装
 
 **桌面版**：设置 → 插件 → 添加插件，填入仓库地址：
@@ -137,6 +139,25 @@ index.js   # Host 端：壁纸代理（/neon-theme/api/list、/media）与设置
 ```
 
 改完 `client.js` 后刷新页面即可看到效果。
+
+## 免责声明
+
+**本项目是个人开发的第三方插件，与 DeepSeek / DeepSeek Harness 官方无关，未获其背书或授权。**
+
+- 软件按「现状」提供，不对可用性、稳定性或适配性作任何明示或默示担保；使用风险由使用者自行承担。
+- 壁纸与视频素材全部来自第三方站点，**版权归各站点及原作者 / 版权方所有**：
+  - **Wallhaven**：版权归上传者，插件只请求 SFW（`purity=100`）内容；
+  - **Microsoft Bing 每日一图**：版权归 Microsoft；
+  - **Picsum**：基于 Unsplash 图片，适用 Unsplash License；
+  - **Mixkit**：适用 Mixkit Free License；
+  - **Sakugabooru**：社区归档的动画作画片段，动画作品版权归各制作委员会 / 版权方所有，**仅供个人欣赏，请勿商用或再分发**。
+- 插件只在本机代理取回并缓存上述素材（`$DSH_HOME/neon-theme-cache`），**不上传任何素材**；由此产生的版权与合规风险由使用者自行承担。
+- 请自行确认所在地法律法规；若你是版权方并认为使用不当，请提 Issue，我会移除对应来源或分类。
+- 第三方站点可能随时变更接口、限制访问或下线，导致对应分类不可用，作者不承担责任。
+- 不收集遥测数据；除获取壁纸 / 视频的请求外不向外发送任何数据，这些请求只包含素材 URL。
+- 若后续 DSH 版本导致主题失效或界面异常，可在「设置 → 插件」停用本插件，或删除设置文件恢复原生界面。
+
+**English summary:** This is an unofficial third-party plugin, not affiliated with or endorsed by DeepSeek. It is provided "as is", without warranty of any kind. All wallpapers and video clips are fetched from third-party sites and remain the property of their respective owners; the plugin only caches them locally for personal use and never re-distributes them. You are responsible for how you use the media and for complying with your local laws.
 
 ## License
 

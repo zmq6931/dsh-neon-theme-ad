@@ -1753,7 +1753,7 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
               h(
                 'span',
                 { className: 'dshneon-foot__actions' },
-                h('span', { className: 'dshneon-foot__ver' }, 'v0.12.3'),
+                h('span', { className: 'dshneon-foot__ver' }, 'v0.12.4'),
                 h(
                   'button',
                   {
