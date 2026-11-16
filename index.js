@@ -64,14 +64,12 @@ const ANIME_SERIES = {
   },
   slam: {
     label: '灌篮高手',
-    // Every Slam Dunk tag on the site; the modern movie cuts (The First Slam
-    // Dunk) score highest, then the classic TV moments.
+    // Only the three movies: the 1990s TV cuts are black-and-white and look
+    // dated as a wallpaper, while the movies carry the modern colour sakuga.
     tags: [
-      'slam_dunk',
-      'slam_dunk_series',
+      'the_first_slam_dunk',
       'slam_dunk_movie_1',
       'slam_dunk_movie_2:_zenkoku_seiha_da!_-_sakuragi_hanamichi',
-      'the_first_slam_dunk',
     ],
   },
   dragon: {
