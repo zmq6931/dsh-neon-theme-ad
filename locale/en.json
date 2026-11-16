@@ -1,0 +1,7 @@
+{
+  "meta": {
+    "title": "Neon theme engine",
+    "description": "Code-drawn animated backdrops plus a breathing neon window frame and a glowing composer ring. Ten skins with manual pick, category rotation or time-of-day switching. The wallpaper shelf pulls from Wallhaven, Bing daily, Picsum and Mixkit live videos, previews them live, applies one in a click and loads more on demand. Skin and wallpaper choices are stored in a host settings file, so they survive a restart even when the GUI port changes. Open it from the Neon theme button beside the session title, or Settings → General.",
+    "detail": "docs/DETAIL.md"
+  }
+}
