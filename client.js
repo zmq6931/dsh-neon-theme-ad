@@ -125,6 +125,7 @@ window.__ModuleLoader__.load({
         videoLoading: '缓冲中',
         videoError: '加载失败',
         animeSlam: '灌篮高手',
+        animeSlamMovie: '灌篮剧场版',
         animeTop: '全网高光',
         animeNaruto: '火影忍者',
         animeBleach: '死神',
@@ -220,6 +221,7 @@ window.__ModuleLoader__.load({
         videoLoading: 'buffering',
         videoError: 'failed to load',
         animeSlam: 'Slam Dunk',
+        animeSlamMovie: 'Slam Dunk movies',
         animeTop: 'Top cuts',
         animeNaruto: 'Naruto',
         animeBleach: 'Bleach',
@@ -1685,7 +1687,7 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
               h(
                 'span',
                 { className: 'dshneon-foot__actions' },
-                h('span', { className: 'dshneon-foot__ver' }, 'v0.11.5'),
+                h('span', { className: 'dshneon-foot__ver' }, 'v0.11.6'),
                 h(
                   'button',
                   {
@@ -1820,6 +1822,7 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
       { id: 'animeclip:frieren', kind: 'video', group: 'anime', key: 'animeFrieren' },
       { id: 'animeclip:mha', kind: 'video', group: 'anime', key: 'animeMHA' },
       { id: 'animeclip:slam', kind: 'video', group: 'anime', key: 'animeSlam' },
+      { id: 'animeclip:slam_movie', kind: 'video', group: 'anime', key: 'animeSlamMovie' },
       { id: 'animeclip:dragon', kind: 'video', group: 'anime', key: 'animeDragon' },
       { id: 'animeclip:tennis', kind: 'video', group: 'anime', key: 'animeTennis' },
       { id: 'animeclip:yuyu', kind: 'video', group: 'anime', key: 'animeYuYu' },

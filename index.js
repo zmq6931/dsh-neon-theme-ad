@@ -64,8 +64,12 @@ const ANIME_SERIES = {
   },
   slam: {
     label: '灌篮高手',
-    // Only the three movies: the 1990s TV cuts are black-and-white and look
-    // dated as a wallpaper, while the movies carry the modern colour sakuga.
+    // TV series only: `slam_dunk_series` also tags the new movie, so the movie
+    // tag is excluded to keep this the 1993 TV anime.
+    tags: ['slam_dunk_series+-the_first_slam_dunk'],
+  },
+  slam_movie: {
+    label: '灌篮剧场版',
     tags: [
       'the_first_slam_dunk',
       'slam_dunk_movie_1',
