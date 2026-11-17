@@ -1843,7 +1843,7 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
               h(
                 'span',
                 { className: 'dshneon-foot__actions' },
-                h('span', { className: 'dshneon-foot__ver' }, 'v0.17.1'),
+                h('span', { className: 'dshneon-foot__ver' }, 'v0.18.0'),
                 h(
                   'button',
                   {

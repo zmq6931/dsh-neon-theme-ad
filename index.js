@@ -28,6 +28,8 @@ const CACHE_LIMIT = 80
 const MAX_CACHE_BYTES = 1.2 * 1024 * 1024 * 1024
 const MAX_MEDIA_BYTES = 64 * 1024 * 1024
 const MAX_CLIP_BYTES = 24 * 1024 * 1024
+const MAX_AUDIO_BYTES = 40 * 1024 * 1024
+const IA_TIMEOUT_MS = 2500
 const MAX_SETTINGS_BYTES = 64 * 1024
 const LIST_TTL_MS = 10 * 60 * 1000
 const FETCH_TIMEOUT_MS = 20000
@@ -161,7 +163,8 @@ function extFor(contentType) {
 
 async function fetchWithTimeout(url, init) {
   const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
+  const timeout = (init && init.timeoutMs) || FETCH_TIMEOUT_MS
+  const timer = setTimeout(() => controller.abort(), timeout)
   try {
     return await fetch(url, {
       signal: controller.signal,
@@ -373,6 +376,7 @@ async function mixkitList(page, params) {
 
 const animeCatalogCache = new Map()
 const iaTrailerCache = new Map()
+let iaUnavailableUntil = 0
 
 // English titles used to look up official trailers (with audio) on Internet
 // Archive; the Sakugabooru archive itself is silent.
@@ -407,27 +411,44 @@ async function iaTrailers(seriesKey, label) {
   if (!query) return []
   const hit = iaTrailerCache.get(seriesKey)
   if (hit && Date.now() - hit.at < LIST_TTL_MS) return hit.items
+  if (Date.now() < iaUnavailableUntil) return []
 
   const collect = async (searchQuery, limit) => {
+    if (Date.now() < iaUnavailableUntil) return []
     const found = []
     try {
       const searchUrl =
         'https://archive.org/advancedsearch.php?q=' +
         encodeURIComponent(searchQuery) +
         '&fl%5B%5D=identifier&rows=8&page=1&output=json&sort%5B%5D=downloads+desc'
-      const response = await fetchWithTimeout(searchUrl)
+      const response = await fetchWithTimeout(searchUrl, { timeoutMs: IA_TIMEOUT_MS })
       const docs = response.ok ? (await response.json())?.response?.docs || [] : []
       for (const doc of docs) {
         if (found.length >= limit) break
         try {
-          const metaResponse = await fetchWithTimeout('https://archive.org/metadata/' + doc.identifier)
+          const metaResponse = await fetchWithTimeout('https://archive.org/metadata/' + doc.identifier, {
+            timeoutMs: IA_TIMEOUT_MS,
+          })
           if (!metaResponse.ok) continue
           const meta = await metaResponse.json()
-          const file = (meta.files || []).find((entry) => {
+          // Prefer the sharpest derivative the item offers: the 512kb/360p
+          // transcodes look blurry on a 1440p desktop, while the source or
+          // 720p/1080p files are still small enough to stream.
+          const candidates = (meta.files || []).filter((entry) => {
             if (!/\.(mp4|webm)$/i.test(entry.name)) return false
             const size = Number(entry.size)
-            return size > 1024 * 1024 && size < MAX_CLIP_BYTES
+            return size > 1024 * 1024 && size < MAX_AUDIO_BYTES
           })
+          const rank = (entry) => {
+            const width = Number(entry.width) || 0
+            const size = Number(entry.size) || 0
+            let score = width * 20 + size / 1e6
+            if (/512kb|256kb|360p|240p|144p/i.test(entry.name)) score -= 20000
+            if (/1080|720/i.test(entry.name)) score += 5000
+            return score
+          }
+          candidates.sort((left, right) => rank(right) - rank(left))
+          const file = candidates[0]
           if (!file) continue
           const url = 'https://archive.org/download/' + doc.identifier + '/' + encodeURIComponent(file.name)
           found.push({
@@ -449,7 +470,9 @@ async function iaTrailers(seriesKey, label) {
         }
       }
     } catch (error) {
-      /* archive.org is optional */
+      // archive.org is optional and is blocked on some networks; stop asking
+      // for a while so the silent catalog still loads instantly.
+      iaUnavailableUntil = Date.now() + 10 * 60 * 1000
     }
     return found
   }
