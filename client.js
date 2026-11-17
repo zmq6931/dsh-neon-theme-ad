@@ -441,12 +441,6 @@ window.__ModuleLoader__.load({
       backdrop: 46,
       wallBright: 50,
       wallLoop: true,
-      wallSound: true,
-      wallVolume: 60,
-      customUrl: '',
-      customBvid: '',
-      customError: '',
-      proxy: '',
       playlist: [],
       wall: null,
       settingsVersion: 3,
@@ -476,13 +470,14 @@ window.__ModuleLoader__.load({
         next.wallBright = Math.round(Math.min(100, Math.max(0, ((factor - 0.7) / 1.1) * 100)))
       }
       next.settingsVersion = 3
+      // The sound / video-link / proxy features are gone; drop their stored keys.
+      delete next.wallSound
+      delete next.wallVolume
+      delete next.customUrl
+      delete next.customBvid
+      delete next.customError
+      delete next.proxy
       // Features that were removed (clip volume switch, background radio).
-      next.wallSound = next.wallSound !== false
-      next.wallVolume = clamp(next.wallVolume, 0, 100)
-      next.customUrl = typeof next.customUrl === 'string' ? next.customUrl.slice(0, 500) : ''
-      next.customBvid = typeof next.customBvid === 'string' ? next.customBvid.slice(0, 20) : ''
-      next.customError = typeof next.customError === 'string' ? next.customError.slice(0, 120) : ''
-      next.proxy = typeof next.proxy === 'string' ? next.proxy.slice(0, 120) : ''
       delete next.musicOn
       delete next.musicVolume
       delete next.musicStation
@@ -1386,17 +1381,6 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
                         selectedIds.has(item.id) ? '\u2713' : '+',
                       )
                     : null,
-                  isVideo
-                    ? h(
-                        'span',
-                        {
-                          className: 'dshneon-wall__audio' + (item.audio === false ? ' is-mute' : ' is-sound'),
-                          title: item.audio === false ? tr('audioNone') : tr('audioHas'),
-                          'aria-label': item.audio === false ? tr('audioNone') : tr('audioHas'),
-                        },
-                        item.audio === false ? '\u{1F507}' : '\u{1F50A}',
-                      )
-                    : null,
                   isVideo && Number(item.score) >= 300
                     ? h(
                         'span',
@@ -1499,116 +1483,6 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
               }),
             )
           : null,
-        current && current.kind === 'video'
-          ? h(
-              'div',
-              { className: 'dshneon-row' },
-              h(
-                'div',
-                { className: 'dshneon-row__text' },
-                h('span', { className: 'dshneon-row__label' }, tr('wallSound')),
-                current.audio === false
-                  ? h('span', { className: 'dshneon-row__hint' }, tr('videoSilent'))
-                  : null,
-              ),
-              h(Switch, {
-                checked: props.sound !== false,
-                label: tr('wallSound'),
-                onChange: props.onSound,
-              }),
-            )
-          : null,
-        current && current.kind === 'video' && current.audio !== false && props.sound !== false
-          ? h(Range, {
-              value: props.volume,
-              label: tr('wallVolume'),
-              onChange: props.onVolume,
-            })
-          : null,
-        h(
-          'div',
-          { className: 'dshneon-row dshneon-row--stack' },
-          h('span', { className: 'dshneon-row__label' }, tr('customLabel')),
-          h(
-            'div',
-            { className: 'dshneon-custombar' },
-            h('input', {
-              type: 'text',
-              className: 'dshneon-custominput',
-              placeholder: tr('customPlaceholder'),
-              value: customDraft,
-              spellcheck: false,
-              onChange: (event) => setCustomDraft(event.target.value),
-              onKeyDown: (event) => {
-                if (event.key === 'Enter') props.onCustom(customDraft)
-              },
-            }),
-            h(
-              'button',
-              { type: 'button', className: 'dshneon-chip', onClick: () => props.onCustom(customDraft) },
-              tr('customPlay'),
-            ),
-            props.customUrl
-              ? h(
-                  'button',
-                  {
-                    type: 'button',
-                    className: 'dshneon-chip',
-                    onClick: () => {
-                      setCustomDraft('')
-                      props.onCustom('')
-                    },
-                  },
-                  tr('customClear'),
-                )
-              : null,
-            props.customUrl && /youtu/.test(props.customUrl)
-              ? h(
-                  'button',
-                  {
-                    type: 'button',
-                    className: 'dshneon-chip',
-                    onClick: () => {
-                      const parsed = parseVideoUrl(props.customUrl)
-                      const player =
-                        parsed && parsed.type === 'youtube'
-                          ? 'https://www.youtube-nocookie.com/embed/' +
-                            parsed.id +
-                            '?autoplay=1&loop=1&playlist=' +
-                            parsed.id +
-                            '&controls=0&rel=0&playsinline=1'
-                          : props.customUrl
-                      window.open('/neon-theme/api/embed?src=' + encodeURIComponent(player), '_blank')
-                    },
-                  },
-                  tr('customTest'),
-                )
-              : null,
-          ),
-          props.customError ? h('span', { className: 'dshneon-row__hint' }, props.customError) : null,
-          props.customUrl ? h('span', { className: 'dshneon-row__hint' }, tr('customHint')) : null,
-        h(
-          'div',
-          { className: 'dshneon-row dshneon-row--stack' },
-          h('span', { className: 'dshneon-row__label' }, tr('proxyLabel')),
-          h(
-            'div',
-            { className: 'dshneon-custombar' },
-            h('input', {
-              type: 'text',
-              className: 'dshneon-custominput',
-              placeholder: tr('proxyPlaceholder'),
-              value: props.proxy || '',
-              spellcheck: false,
-              onChange: (event) => props.onProxy(event.target.value),
-            }),
-          ),
-          h('span', { className: 'dshneon-row__hint' }, tr('proxyHint')),
-        ),
-          props.customUrl && /youtu/.test(props.customUrl)
-            ? h('span', { className: 'dshneon-row__hint' }, tr('customYoutubeTip'))
-            : null,
-        ),
         current
           ? h(
               'div',
@@ -2001,7 +1875,7 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
               h(
                 'span',
                 { className: 'dshneon-foot__actions' },
-                h('span', { className: 'dshneon-foot__ver' }, 'v0.21.0'),
+                h('span', { className: 'dshneon-foot__ver' }, 'v0.22.0'),
                 h(
                   'button',
                   {

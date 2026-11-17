@@ -660,12 +660,10 @@ async function animeClipList(page, params) {
   const requested = String(params.get('series') || '')
   const seriesKey = ANIME_SERIES[requested] ? requested : 'demon'
   const entry = ANIME_SERIES[seriesKey]
-  const [catalog, trailers] = await Promise.all([animeCatalog(entry), iaTrailers(seriesKey, entry.label)])
+  const catalog = await animeCatalog(entry)
   const pageSize = 40
-  const lead = Math.min(trailers.length, pageSize)
-  const offset = page === 1 ? 0 : (page - 1) * pageSize - lead
-  const size = page === 1 ? pageSize - lead : pageSize
-  const rows = catalog.slice(offset, offset + size).map((row) => ({
+  const offset = (page - 1) * pageSize
+  const items = catalog.slice(offset, offset + pageSize).map((row) => ({
     id: 'sg-' + row.id,
     kind: 'video',
     thumb: row.preview_url,
@@ -674,15 +672,12 @@ async function animeClipList(page, params) {
     w: row.width,
     h: row.height,
     score: Number(row.score) || 0,
-    audio: false,
     source: 'sakugabooru',
     title: entry.label + ' · ' + (Number(row.score) || 0) + ' 分',
     page: 'https://www.sakugabooru.com/post/show/' + row.id,
     tag: entry.label,
   }))
-  const items = page === 1 ? trailers.slice(0, lead).concat(rows) : rows
-  const total = catalog.length + lead
-  return { lastPage: Math.max(1, Math.ceil(total / pageSize)), items }
+  return { lastPage: Math.max(1, Math.ceil(catalog.length / pageSize)), items }
 }
 
 /* ------------------------------------------------------------------ *
