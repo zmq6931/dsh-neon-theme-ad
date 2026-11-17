@@ -131,6 +131,9 @@ window.__ModuleLoader__.load({
         customTest: '新标签测试',
         customHint: 'YouTube / Vimeo / B 站链接或 mp4 直链，自动循环播放',
         customResolveFail: 'B 站链接解析失败（可能需要登录或该视频不可用）',
+        proxyLabel: '网络代理',
+        proxyPlaceholder: 'http://127.0.0.1:7890',
+        proxyHint: '宿主访问 archive.org / Wallhaven 走这个 HTTP 代理；留空则直连',
         customYoutubeTip: 'YouTube 提示 Error 153 时表示该页面被禁止嵌入，请改用 mp4 直链',
         wallCheck: '加入播放列表',
         playlistActive: '播放列表',
@@ -261,6 +264,9 @@ window.__ModuleLoader__.load({
         customTest: 'Test in tab',
         customHint: 'YouTube / Vimeo / Bilibili link or direct mp4, loops automatically',
         customResolveFail: 'Could not resolve the Bilibili link (login or region required)',
+        proxyLabel: 'Network proxy',
+        proxyPlaceholder: 'http://127.0.0.1:7890',
+        proxyHint: 'Host requests to archive.org / Wallhaven use this HTTP proxy',
         customYoutubeTip: 'YouTube Error 153 means the page may not embed it; use a direct mp4 url instead',
         wallCheck: 'Add to playlist',
         playlistActive: 'Playlist',
@@ -440,6 +446,7 @@ window.__ModuleLoader__.load({
       customUrl: '',
       customBvid: '',
       customError: '',
+      proxy: '',
       playlist: [],
       wall: null,
       settingsVersion: 3,
@@ -475,6 +482,7 @@ window.__ModuleLoader__.load({
       next.customUrl = typeof next.customUrl === 'string' ? next.customUrl.slice(0, 500) : ''
       next.customBvid = typeof next.customBvid === 'string' ? next.customBvid.slice(0, 20) : ''
       next.customError = typeof next.customError === 'string' ? next.customError.slice(0, 120) : ''
+      next.proxy = typeof next.proxy === 'string' ? next.proxy.slice(0, 120) : ''
       delete next.musicOn
       delete next.musicVolume
       delete next.musicStation
@@ -1579,6 +1587,24 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
           ),
           props.customError ? h('span', { className: 'dshneon-row__hint' }, props.customError) : null,
           props.customUrl ? h('span', { className: 'dshneon-row__hint' }, tr('customHint')) : null,
+        h(
+          'div',
+          { className: 'dshneon-row dshneon-row--stack' },
+          h('span', { className: 'dshneon-row__label' }, tr('proxyLabel')),
+          h(
+            'div',
+            { className: 'dshneon-custombar' },
+            h('input', {
+              type: 'text',
+              className: 'dshneon-custominput',
+              placeholder: tr('proxyPlaceholder'),
+              value: props.proxy || '',
+              spellcheck: false,
+              onChange: (event) => props.onProxy(event.target.value),
+            }),
+          ),
+          h('span', { className: 'dshneon-row__hint' }, tr('proxyHint')),
+        ),
           props.customUrl && /youtu/.test(props.customUrl)
             ? h('span', { className: 'dshneon-row__hint' }, tr('customYoutubeTip'))
             : null,
@@ -1794,11 +1820,13 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
               sound: state.wallSound,
               customUrl: state.customUrl,
               customError: state.customError,
+              proxy: state.proxy,
               volume: state.wallVolume,
               playlist: state.playlist,
               onBright: (value) => update({ wallBright: value }),
               onLoop: (value) => update({ wallLoop: value }),
               onSound: (value) => update({ wallSound: value }),
+              onProxy: (value) => update({ proxy: String(value || '').trim() }),
               onCustom: async (value) => {
                 const raw = String(value || '').trim()
                 if (!raw) {
@@ -1973,7 +2001,7 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
               h(
                 'span',
                 { className: 'dshneon-foot__actions' },
-                h('span', { className: 'dshneon-foot__ver' }, 'v0.20.1'),
+                h('span', { className: 'dshneon-foot__ver' }, 'v0.21.0'),
                 h(
                   'button',
                   {

@@ -15,10 +15,13 @@
  *     would forget the chosen skin and wallpaper.
  */
 import { createHash } from 'node:crypto'
-import { promises as fs, createReadStream } from 'node:fs'
+import { promises as fs, createReadStream, readFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { Readable } from 'node:stream'
+import http from 'node:http'
+import https from 'node:https'
+import tls from 'node:tls'
 
 const API_PREFIX = '/neon-theme/api'
 const HOME_DIR = process.env.DSH_HOME || join(homedir(), '.dsh')
@@ -166,9 +169,128 @@ function extFor(contentType) {
   return '.jpg'
 }
 
+const PROXY_FILE = join(HOME_DIR, 'neon-theme-proxy.txt')
+let proxyCache = { at: 0, value: '' }
+
+function proxyUrl() {
+  if (Date.now() - proxyCache.at < 15000) return proxyCache.value
+  let value = ''
+  try {
+    value = readFileSync(PROXY_FILE, 'utf8').trim()
+  } catch (error) {
+    value = ''
+  }
+  if (!value) {
+    try {
+      const saved = JSON.parse(readFileSync(SETTINGS_FILE, 'utf8'))
+      value = typeof saved.proxy === 'string' ? saved.proxy.trim() : ''
+    } catch (error) {
+      value = ''
+    }
+  }
+  proxyCache = { at: Date.now(), value }
+  return value
+}
+
+function proxyRequest(target, init) {
+  return new Promise((resolve, reject) => {
+    const proxy = new URL(proxyUrl())
+    const isHttps = target.protocol === 'https:'
+    const port = target.port || (isHttps ? 443 : 80)
+    const method = (init && init.method) || 'GET'
+    const headers = { ...((init && init.headers) || {}), host: target.hostname }
+    const body = init && init.body ? Buffer.from(init.body) : null
+    if (body) headers['content-length'] = String(Buffer.byteLength(body))
+
+    const connect = http.request({
+      host: proxy.hostname,
+      port: Number(proxy.port) || 80,
+      method: 'CONNECT',
+      path: target.hostname + ':' + port,
+      headers: { host: target.hostname + ':' + port },
+      timeout: FETCH_TIMEOUT_MS,
+    })
+    connect.on('error', reject)
+    connect.on('timeout', () => {
+      connect.destroy(new Error('proxy connect timeout'))
+    })
+    connect.on('connect', (response, socket) => {
+      if (response.statusCode !== 200) {
+        socket.destroy()
+        reject(new Error('proxy refused ' + response.statusCode))
+        return
+      }
+      const stream = isHttps ? tls.connect({ socket, servername: target.hostname }) : socket
+      const done = (error) => {
+        try {
+          stream.destroy()
+        } catch (destroyError) {
+          /* ignore */
+        }
+        reject(error)
+      }
+      stream.on('error', done)
+      const send = () => {
+        const lib = isHttps ? https : http
+        // Hand the already-tunnelled socket to a one-shot agent; passing it as
+        // `createConnection` on the request itself never flushes the request.
+        const agent = new lib.Agent({ keepAlive: false, maxSockets: 1 })
+        agent.createConnection = (options, callback) => {
+          callback(null, stream)
+          return stream
+        }
+        const request = lib.request(
+          {
+            host: target.hostname,
+            port,
+            path: target.pathname + target.search,
+            method,
+            headers,
+            agent,
+          },
+          (response) => {
+            response.on('end', () => agent.destroy())
+            resolve(response)
+          },
+        )
+        request.on('error', done)
+        request.setTimeout(FETCH_TIMEOUT_MS, () => request.destroy(new Error('proxy request timeout')))
+        if (body) request.write(body)
+        request.end()
+      }
+      if (isHttps) stream.once('secureConnect', send)
+      else send()
+    })
+    connect.end()
+  })
+}
+
+async function proxyFetch(rawUrl, init) {
+  let current = new URL(rawUrl)
+  for (let hop = 0; hop < 5; hop += 1) {
+    const response = await proxyRequest(current, init)
+    if (response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
+      response.resume()
+      current = new URL(response.headers.location, current)
+      continue
+    }
+    const headers = new Headers()
+    for (const [key, value] of Object.entries(response.headers)) {
+      if (value === undefined) continue
+      if (Array.isArray(value)) headers.set(key, value.join(', '))
+      else headers.set(key, String(value))
+    }
+    return new Response(Readable.toWeb(response), { status: response.statusCode, headers })
+  }
+  throw new Error('too many redirects')
+}
+
 async function fetchWithTimeout(url, init) {
   const controller = new AbortController()
   const timeout = (init && init.timeoutMs) || FETCH_TIMEOUT_MS
+  if (proxyUrl()) {
+    return await proxyFetch(url, init)
+  }
   const timer = setTimeout(() => controller.abort(), timeout)
   try {
     return await fetch(url, {
