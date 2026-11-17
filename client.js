@@ -128,7 +128,8 @@ window.__ModuleLoader__.load({
         customPlaceholder: '粘贴 YouTube 链接或 .mp4 直链',
         customPlay: '播放',
         customClear: '清除',
-        customHint: 'YouTube / Vimeo 链接或 mp4 直链，自动循环播放',
+        customHint: 'YouTube / Vimeo / B 站链接或 mp4 直链，自动循环播放',
+        customResolveFail: 'B 站链接解析失败（可能需要登录或该视频不可用）',
         customYoutubeTip: 'YouTube 提示 Error 153 时表示该页面被禁止嵌入，请改用 mp4 直链',
         wallCheck: '加入播放列表',
         playlistActive: '播放列表',
@@ -256,7 +257,8 @@ window.__ModuleLoader__.load({
         customPlaceholder: 'YouTube link or .mp4 url',
         customPlay: 'Play',
         customClear: 'Clear',
-        customHint: 'YouTube / Vimeo link or direct mp4, loops automatically',
+        customHint: 'YouTube / Vimeo / Bilibili link or direct mp4, loops automatically',
+        customResolveFail: 'Could not resolve the Bilibili link (login or region required)',
         customYoutubeTip: 'YouTube Error 153 means the page may not embed it; use a direct mp4 url instead',
         wallCheck: 'Add to playlist',
         playlistActive: 'Playlist',
@@ -434,6 +436,8 @@ window.__ModuleLoader__.load({
       wallSound: true,
       wallVolume: 60,
       customUrl: '',
+      customBvid: '',
+      customError: '',
       playlist: [],
       wall: null,
       settingsVersion: 3,
@@ -467,6 +471,8 @@ window.__ModuleLoader__.load({
       next.wallSound = next.wallSound !== false
       next.wallVolume = clamp(next.wallVolume, 0, 100)
       next.customUrl = typeof next.customUrl === 'string' ? next.customUrl.slice(0, 500) : ''
+      next.customBvid = typeof next.customBvid === 'string' ? next.customBvid.slice(0, 20) : ''
+      next.customError = typeof next.customError === 'string' ? next.customError.slice(0, 120) : ''
       delete next.musicOn
       delete next.musicVolume
       delete next.musicStation
@@ -1547,6 +1553,7 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
                 )
               : null,
           ),
+          props.customError ? h('span', { className: 'dshneon-row__hint' }, props.customError) : null,
           props.customUrl ? h('span', { className: 'dshneon-row__hint' }, tr('customHint')) : null,
           props.customUrl && /youtu/.test(props.customUrl)
             ? h('span', { className: 'dshneon-row__hint' }, tr('customYoutubeTip'))
@@ -1762,12 +1769,33 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
               loop: state.wallLoop,
               sound: state.wallSound,
               customUrl: state.customUrl,
+              customError: state.customError,
               volume: state.wallVolume,
               playlist: state.playlist,
               onBright: (value) => update({ wallBright: value }),
               onLoop: (value) => update({ wallLoop: value }),
               onSound: (value) => update({ wallSound: value }),
-              onCustom: (value) => update({ customUrl: String(value || '').trim() }),
+              onCustom: async (value) => {
+                const raw = String(value || '').trim()
+                if (!raw) {
+                  update({ customUrl: '', customBvid: '', customError: '' })
+                  return
+                }
+                const parsed = parseVideoUrl(raw)
+                if (parsed && parsed.type === 'bilibili') {
+                  update({ customError: '' })
+                  try {
+                    const response = await fetch('/neon-theme/api/resolve?url=' + encodeURIComponent(raw))
+                    const data = await response.json()
+                    if (!data || !data.src) throw new Error('no stream')
+                    update({ customUrl: data.src, customBvid: data.bvid || '', customError: '' })
+                  } catch (error) {
+                    update({ customError: tr('customResolveFail') })
+                  }
+                  return
+                }
+                update({ customUrl: raw, customBvid: '', customError: '' })
+              },
               onVolume: (value) => update({ wallVolume: value }),
               onToggle: togglePlaylist,
               onLocalPick: openLocalPicker,
@@ -1921,7 +1949,7 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
               h(
                 'span',
                 { className: 'dshneon-foot__actions' },
-                h('span', { className: 'dshneon-foot__ver' }, 'v0.19.1'),
+                h('span', { className: 'dshneon-foot__ver' }, 'v0.20.0'),
                 h(
                   'button',
                   {
@@ -2434,6 +2462,19 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
       localInput.click()
     }
 
+    /** Bilibili CDN links expire; refresh them from the saved video id. */
+    async function refreshCustomSource() {
+      const state = store.get()
+      if (!state.customBvid) return
+      try {
+        const response = await fetch('/neon-theme/api/resolve?url=' + encodeURIComponent(state.customBvid))
+        const data = await response.json()
+        if (data && data.src) store.set({ customUrl: data.src })
+      } catch (error) {
+        /* keep the old url */
+      }
+    }
+
     /** A local file only lives as a blob URL; rebuild it after a reload. */
     async function restoreLocalVideo() {
       const wall = store.get().wall
@@ -2465,6 +2506,7 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
     function parseVideoUrl(raw) {
       const value = String(raw || '').trim()
       if (!value) return null
+      if (value.startsWith('/neon-theme/api/')) return { type: 'video', src: value }
       try {
         const url = new URL(value)
         const host = url.hostname.replace(/^www\./, '')
@@ -2479,6 +2521,10 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
           return null
         }
         if (/\.(mp4|webm|ogv|m4v)$/i.test(url.pathname)) return { type: 'video', src: url.toString() }
+        if (/(^|\.)bilibili\.com$/.test(host) || host === 'b23.tv') {
+          const match = value.match(/BV[0-9A-Za-z]{10}/)
+          return { type: 'bilibili', bvid: match ? match[0] : '' }
+        }
         if (host === 'vimeo.com') {
           const id = url.pathname.split('/').filter(Boolean).pop()
           if (/^\d+$/.test(id || '')) return { type: 'vimeo', id }
@@ -2589,11 +2635,11 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
       const origin = typeof window !== 'undefined' && window.location ? window.location.origin : ''
       const mediaSrc =
         parsed.type === 'youtube'
-          ? 'https://www.youtube.com/embed/' +
+          ? 'https://www.youtube-nocookie.com/embed/' +
             parsed.id +
             '?autoplay=1&loop=1&playlist=' +
             parsed.id +
-            '&controls=0&modestbranding=1&playsinline=1&rel=0&enablejsapi=1&mute=' +
+            '&controls=0&modestbranding=1&playsinline=1&rel=0&mute=' +
             muted +
             (origin ? '&origin=' + encodeURIComponent(origin) : '') +
             (origin ? '&widget_referrer=' + encodeURIComponent(origin) : '')
@@ -2912,6 +2958,7 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
             remoteSettingsReady = true
             if (remote && Object.keys(remote).length > 0) store.set(remote)
             void restoreLocalVideo()
+            void refreshCustomSource()
           })
           .catch(() => {
             if (!disposed) {

@@ -49,10 +49,15 @@ const ALLOWED_HOSTS = new Set([
   'archive.org',
 ])
 
+function isBilibiliHost(hostname) {
+  const host = String(hostname || '').toLowerCase()
+  return /(^|\.)(bilibili\.com|bilivideo\.com|bilivideo\.cn|hdslb\.com)$/.test(host)
+}
+
 function isAllowedHost(hostname) {
   const host = String(hostname || '').toLowerCase()
   // archive.org serves downloads from rotating `dn######.us.archive.org` hosts.
-  return ALLOWED_HOSTS.has(host) || host.endsWith('.archive.org')
+  return ALLOWED_HOSTS.has(host) || host.endsWith('.archive.org') || isBilibiliHost(host)
 }
 
 const MIXKIT_DEFAULT = ['nature', 'abstract', 'city', 'sci-fi', 'particles', 'space']
@@ -622,6 +627,81 @@ function embedPage(params) {
   })
 }
 
+let biliCookieCache = { at: 0, value: '' }
+
+async function biliCookie() {
+  if (Date.now() - biliCookieCache.at < 60 * 60 * 1000 && biliCookieCache.value) return biliCookieCache.value
+  try {
+    const response = await fetchWithTimeout('https://www.bilibili.com/', {
+      headers: { referer: 'https://www.bilibili.com' },
+    })
+    const raw = typeof response.headers.getSetCookie === 'function' ? response.headers.getSetCookie() : []
+    const pairs = raw.map((line) => String(line).split(';')[0]).filter(Boolean)
+    biliCookieCache = { at: Date.now(), value: pairs.join('; ') }
+  } catch (error) {
+    biliCookieCache = { at: Date.now(), value: '' }
+  }
+  return biliCookieCache.value
+}
+
+/**
+ * Turn a Bilibili share link into a direct mp4 the media proxy can stream.
+ * Bilibili only serves its CDN with a bilibili Referer, which the proxy adds.
+ */
+async function resolveBilibili(params) {
+  const raw = String(params.get('url') || '').trim()
+  if (!raw) return jsonResponse({ error: 'missing url' }, 400)
+  let source = raw
+  let bvid = (raw.match(/BV[0-9A-Za-z]{10}/) || [])[0]
+  if (!bvid && /b23\.tv|bilibili\.com/i.test(raw)) {
+    try {
+      const response = await fetchWithTimeout(raw, {
+        headers: { referer: 'https://www.bilibili.com' },
+        redirect: 'follow',
+      })
+      bvid = (String(response.url).match(/BV[0-9A-Za-z]{10}/) || [])[0]
+      source = response.url
+    } catch (error) {
+      /* fall through */
+    }
+  }
+  if (!bvid) return jsonResponse({ error: 'no bv id in link' }, 400)
+
+  const cookie = await biliCookie()
+  const headers = { referer: 'https://www.bilibili.com', ...(cookie ? { cookie } : {}) }
+  let view
+  try {
+    const response = await fetchWithTimeout('https://api.bilibili.com/x/web-interface/view?bvid=' + bvid, { headers })
+    view = await response.json()
+  } catch (error) {
+    return jsonResponse({ error: 'bilibili unreachable' }, 502)
+  }
+  if (!view || view.code !== 0 || !view.data) {
+    return jsonResponse({ error: 'bilibili ' + (view && view.code) }, 502)
+  }
+  const cid = view.data.cid
+  let play
+  try {
+    const response = await fetchWithTimeout(
+      'https://api.bilibili.com/x/player/playurl?bvid=' + bvid + '&cid=' + cid + '&qn=64&fnval=1&fourk=0',
+      { headers },
+    )
+    play = await response.json()
+  } catch (error) {
+    return jsonResponse({ error: 'playurl unreachable' }, 502)
+  }
+  const stream = play && play.data && play.data.durl && play.data.durl[0]
+  if (!stream || !stream.url) return jsonResponse({ error: 'no mp4 stream (login required?)' }, 502)
+  return jsonResponse({
+    bvid,
+    title: view.data.title,
+    duration: view.data.duration,
+    quality: play.data.quality,
+    size: stream.size,
+    src: '/neon-theme/api/media?src=' + encodeURIComponent(stream.url),
+  })
+}
+
 async function listResponse(params) {
   const source = String(params.get('source') || 'featured')
   const loader = SOURCES[source]
@@ -908,7 +988,10 @@ async function mediaResponse(params, request) {
     }
   }
 
-  const upstream = await fetchWithTimeout(target.toString())
+  const upstream = await fetchWithTimeout(
+    target.toString(),
+    isBilibiliHost(target.hostname) ? { headers: { referer: 'https://www.bilibili.com' } } : undefined,
+  )
   if (!upstream.ok) return jsonResponse({ error: 'upstream ' + upstream.status }, 502)
   let finalHost = target.hostname.toLowerCase()
   try {
@@ -1016,6 +1099,7 @@ async function handleRequest(request) {
   const rest = path.slice(API_PREFIX.length)
   try {
     if (rest === '/embed') return embedPage(url.searchParams)
+    if (rest === '/resolve') return await resolveBilibili(url.searchParams)
     if (rest === '/list') return await listResponse(url.searchParams)
     if (rest === '/audio') return await audioTrackResponse(url.searchParams)
     if (rest === '/media' || rest === '/img') return await mediaResponse(url.searchParams, request)
