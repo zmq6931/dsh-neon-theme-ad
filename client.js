@@ -787,7 +787,14 @@ html[data-dsh-neon-frame="on"] [data-composer-seat]::after{
   box-shadow:
     0 0 calc(8px + 26px * var(--fx-glow,1)) color-mix(in srgb,var(--fx-accent) 32%,transparent),
     inset 0 0 calc(6px + 18px * var(--fx-glow,1)) color-mix(in srgb,var(--fx-accent) 20%,transparent);
-  animation:dshneon-breathe var(--fx-breathe,3.4s) ease-in-out infinite;
+  /* Keep the glow on its own composited layer and pulse it only a little: a
+     full 0.5-1.0 opacity swing on a large blurred shadow reads as a shake. */
+  will-change:opacity;transform:translateZ(0);backface-visibility:hidden;
+  animation:dshneon-ring var(--fx-breathe,3.4s) ease-in-out infinite;
+}
+@keyframes dshneon-ring{0%,100%{opacity:.78}50%{opacity:1}}
+@media (prefers-reduced-motion: reduce){
+  html[data-dsh-neon-frame="on"] [data-composer-seat]::after{animation:none!important;opacity:1}
 }
 html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
 
@@ -1890,7 +1897,7 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
               h(
                 'span',
                 { className: 'dshneon-foot__actions' },
-                h('span', { className: 'dshneon-foot__ver' }, 'v0.22.1'),
+                h('span', { className: 'dshneon-foot__ver' }, 'v0.22.2'),
                 h(
                   'button',
                   {
