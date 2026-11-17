@@ -124,6 +124,11 @@ window.__ModuleLoader__.load({
         wallLoop: '循环播放',
         wallSound: '声音',
         wallVolume: '音量',
+        customLabel: '视频链接',
+        customPlaceholder: '粘贴 YouTube 链接或 .mp4 直链',
+        customPlay: '播放',
+        customClear: '清除',
+        customHint: 'YouTube / Vimeo 链接或 mp4 直链，自动循环播放',
         wallCheck: '加入播放列表',
         playlistActive: '播放列表',
         playlistHint: '勾选的视频会依次自动循环',
@@ -246,6 +251,11 @@ window.__ModuleLoader__.load({
         wallLoop: 'Loop',
         wallSound: 'Sound',
         wallVolume: 'Volume',
+        customLabel: 'Video link',
+        customPlaceholder: 'YouTube link or .mp4 url',
+        customPlay: 'Play',
+        customClear: 'Clear',
+        customHint: 'YouTube / Vimeo link or direct mp4, loops automatically',
         wallCheck: 'Add to playlist',
         playlistActive: 'Playlist',
         playlistHint: 'Checked clips rotate automatically',
@@ -421,6 +431,7 @@ window.__ModuleLoader__.load({
       wallLoop: true,
       wallSound: true,
       wallVolume: 60,
+      customUrl: '',
       playlist: [],
       wall: null,
       settingsVersion: 3,
@@ -453,6 +464,7 @@ window.__ModuleLoader__.load({
       // Features that were removed (clip volume switch, background radio).
       next.wallSound = next.wallSound !== false
       next.wallVolume = clamp(next.wallVolume, 0, 100)
+      next.customUrl = typeof next.customUrl === 'string' ? next.customUrl.slice(0, 500) : ''
       delete next.musicOn
       delete next.musicVolume
       delete next.musicStation
@@ -903,6 +915,20 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
 .dshneon-walltabs{display:flex;gap:6px;margin:10px 0 0}
 .dshneon-wallgroup-label{font-size:11px;line-height:1;color:var(--dsw-alias-label-secondary);margin-right:2px;flex:none}
 .dshneon-wallselect{flex:1;min-width:0;max-width:100%}
+.dshneon-row--stack{flex-direction:column;align-items:stretch;gap:6px}
+.dshneon-custombar{display:flex;align-items:center;gap:6px}
+.dshneon-custominput{
+  flex:1;min-width:0;height:26px;padding:0 8px;border-radius:8px;font-size:12px;
+  color:var(--dsw-alias-label-primary);background:color-mix(in srgb,var(--dsw-alias-bg-layer-2) 80%,transparent);
+  border:1px solid var(--dsw-alias-border-l2);outline:none;
+}
+.dshneon-custominput:focus{border-color:color-mix(in srgb,var(--fx-accent) 70%,var(--dsw-alias-border-l2))}
+.dshneon-embed-layer{position:fixed;inset:0;z-index:-1;overflow:hidden;background:#04060e;pointer-events:none}
+.dshneon-embed-layer__media{
+  position:absolute;top:50%;left:50%;width:100vw;height:56.25vw;min-height:100vh;min-width:177.78vh;
+  transform:translate(-50%,-50%);border:0;pointer-events:none;object-fit:cover;
+  filter:brightness(var(--fx-wall-bright,1)) saturate(1.05);
+}
 .dshneon-wallbar--foot{margin:10px 0 2px}
 .dshneon-wallmore{flex:1;text-align:center}
 .dshneon-walls{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
@@ -1044,11 +1070,12 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
       const playlist = Array.isArray(state.playlist)
         ? state.playlist.filter((item) => item && item.url)
         : []
-      const wall = playlist.length > 0 ? null : state.wall && state.wall.url ? state.wall : null
+      const custom = parseVideoUrl(state.customUrl)
+      const wall = custom || playlist.length > 0 ? null : state.wall && state.wall.url ? state.wall : null
       // `active` is what decides the surface: a playlist counts as media just
       // like a single wallpaper, otherwise switching to a playlist would put the
       // opaque panels back and the animation would look dark.
-      const active = playlist.length > 0 || Boolean(wall)
+      const active = Boolean(custom) || playlist.length > 0 || Boolean(wall)
       const density = active ? 1 + (state.backdrop / 100) * 10 : 30 + (state.backdrop / 100) * 56
       root.style.setProperty('--fx-surface-d', Math.round(density) + '%')
       root.style.setProperty('--fx-surface-l', Math.round(Math.min(97, Math.max(active ? 55 : 90, density + 18))) + '%')
@@ -1058,7 +1085,10 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
       root.style.setProperty('--fx-side-l', Math.round(Math.min(95, Math.max(active ? 42 : 78, density + 2))) + '%')
       root.style.setProperty('--fx-wall-bright', (0.7 + (state.wallBright / 100) * 1.1).toFixed(2))
 
-      if (playlist.length > 0) {
+      if (custom) {
+        root.setAttribute('data-dsh-neon-wall', 'video')
+        root.style.removeProperty('--fx-wall')
+      } else if (playlist.length > 0) {
         // The playlist owns the backdrop; its videos are drawn by the video layer.
         root.setAttribute('data-dsh-neon-wall', 'video')
         root.style.removeProperty('--fx-wall')
@@ -1162,6 +1192,7 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
       const tr = props.tr
       const [state, setState] = React.useState(() => wallStore.state)
       const [hover, setHover] = React.useState('')
+      const [customDraft, setCustomDraft] = React.useState(() => props.customUrl || '')
 
       React.useEffect(() => wallStore.subscribe(() => setState(wallStore.state)), [])
       React.useEffect(() => {
@@ -1476,6 +1507,46 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
               onChange: props.onVolume,
             })
           : null,
+        h(
+          'div',
+          { className: 'dshneon-row dshneon-row--stack' },
+          h('span', { className: 'dshneon-row__label' }, tr('customLabel')),
+          h(
+            'div',
+            { className: 'dshneon-custombar' },
+            h('input', {
+              type: 'text',
+              className: 'dshneon-custominput',
+              placeholder: tr('customPlaceholder'),
+              value: customDraft,
+              spellcheck: false,
+              onChange: (event) => setCustomDraft(event.target.value),
+              onKeyDown: (event) => {
+                if (event.key === 'Enter') props.onCustom(customDraft)
+              },
+            }),
+            h(
+              'button',
+              { type: 'button', className: 'dshneon-chip', onClick: () => props.onCustom(customDraft) },
+              tr('customPlay'),
+            ),
+            props.customUrl
+              ? h(
+                  'button',
+                  {
+                    type: 'button',
+                    className: 'dshneon-chip',
+                    onClick: () => {
+                      setCustomDraft('')
+                      props.onCustom('')
+                    },
+                  },
+                  tr('customClear'),
+                )
+              : null,
+          ),
+          props.customUrl ? h('span', { className: 'dshneon-row__hint' }, tr('customHint')) : null,
+        ),
         current
           ? h(
               'div',
@@ -1685,11 +1756,13 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
               bright: state.wallBright,
               loop: state.wallLoop,
               sound: state.wallSound,
+              customUrl: state.customUrl,
               volume: state.wallVolume,
               playlist: state.playlist,
               onBright: (value) => update({ wallBright: value }),
               onLoop: (value) => update({ wallLoop: value }),
               onSound: (value) => update({ wallSound: value }),
+              onCustom: (value) => update({ customUrl: String(value || '').trim() }),
               onVolume: (value) => update({ wallVolume: value }),
               onToggle: togglePlaylist,
               onLocalPick: openLocalPicker,
@@ -1843,7 +1916,7 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
               h(
                 'span',
                 { className: 'dshneon-foot__actions' },
-                h('span', { className: 'dshneon-foot__ver' }, 'v0.18.0'),
+                h('span', { className: 'dshneon-foot__ver' }, 'v0.19.0'),
                 h(
                   'button',
                   {
@@ -2381,6 +2454,35 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
      * chosen wallpaper is not a video or the plugin unloads.
      */
     let videoLayer = null
+    let customLayer = null
+
+    /** Recognise YouTube links and direct video files pasted by the user. */
+    function parseVideoUrl(raw) {
+      const value = String(raw || '').trim()
+      if (!value) return null
+      try {
+        const url = new URL(value)
+        const host = url.hostname.replace(/^www\./, '')
+        if (host === 'youtube.com' || host === 'm.youtube.com' || host === 'youtu.be') {
+          let id = ''
+          if (host === 'youtu.be') id = url.pathname.slice(1)
+          else if (url.pathname === '/watch') id = url.searchParams.get('v') || ''
+          else if (url.pathname.startsWith('/embed/')) id = url.pathname.slice(7)
+          else if (url.pathname.startsWith('/shorts/')) id = url.pathname.slice(8)
+          id = id.split('&')[0]
+          if (/^[A-Za-z0-9_-]{6,20}$/.test(id)) return { type: 'youtube', id }
+          return null
+        }
+        if (/\.(mp4|webm|ogv|m4v)$/i.test(url.pathname)) return { type: 'video', src: url.toString() }
+        if (host === 'vimeo.com') {
+          const id = url.pathname.split('/').filter(Boolean).pop()
+          if (/^\d+$/.test(id || '')) return { type: 'vimeo', id }
+        }
+      } catch (error) {
+        return null
+      }
+      return null
+    }
     let playlistIndex = 0
     let warmVideo = null
     let warmTimer = null
@@ -2469,7 +2571,83 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
       }, 6000)
     }
 
+    function syncCustomLayer(state) {
+      const parsed = state.enabled !== false ? parseVideoUrl(state.customUrl) : null
+      if (!parsed) {
+        if (customLayer) {
+          customLayer.remove()
+          customLayer = null
+        }
+        return
+      }
+      const muted = state.wallSound === false ? 1 : 0
+      const mediaSrc =
+        parsed.type === 'youtube'
+          ? 'https://www.youtube.com/embed/' +
+            parsed.id +
+            '?autoplay=1&loop=1&playlist=' +
+            parsed.id +
+            '&controls=0&modestbranding=1&playsinline=1&rel=0&enablejsapi=1&mute=' +
+            muted
+          : parsed.type === 'vimeo'
+            ? 'https://player.vimeo.com/video/' + parsed.id + '?autoplay=1&loop=1&background=1&muted=' + muted
+            : parsed.src
+      if (customLayer && customLayer.dataset.src === mediaSrc) {
+        const video = customLayer.querySelector('video')
+        if (video) {
+          video.muted = muted === 1
+          video.volume = Math.min(1, Math.max(0, (Number(state.wallVolume) || 0) / 100))
+        }
+        return
+      }
+      if (customLayer) {
+        customLayer.remove()
+        customLayer = null
+      }
+      if (!document.body) return
+
+      const layer = document.createElement('div')
+      layer.className = 'dshneon-embed-layer'
+      layer.dataset.src = mediaSrc
+      if (parsed.type === 'video') {
+        const video = document.createElement('video')
+        video.className = 'dshneon-embed-layer__media'
+        video.src = parsed.src
+        video.loop = true
+        video.muted = muted === 1
+        video.volume = Math.min(1, Math.max(0, (Number(state.wallVolume) || 0) / 100))
+        video.playsInline = true
+        video.preload = 'auto'
+        video.setAttribute('playsinline', '')
+        video.setAttribute('aria-hidden', 'true')
+        layer.appendChild(video)
+        const play = video.play()
+        if (play && typeof play.catch === 'function') play.catch(() => armAudioUnlock())
+      } else {
+        const frame = document.createElement('iframe')
+        frame.className = 'dshneon-embed-layer__media'
+        frame.src = mediaSrc
+        frame.setAttribute('allow', 'autoplay; encrypted-media; picture-in-picture; fullscreen')
+        frame.setAttribute('allowfullscreen', '')
+        frame.setAttribute('scrolling', 'no')
+        frame.setAttribute('frameborder', '0')
+        frame.setAttribute('tabindex', '-1')
+        frame.setAttribute('aria-hidden', 'true')
+        layer.appendChild(frame)
+      }
+      document.body.appendChild(layer)
+      customLayer = layer
+    }
+
     function syncVideoLayer(state) {
+      if (parseVideoUrl(state.customUrl)) {
+        if (videoLayer) {
+          videoLayer.remove()
+          videoLayer = null
+        }
+        clearWarmVideo()
+        return
+      }
       const playlist = activePlaylist(state)
       const wall = state.enabled && state.wall && state.wall.kind === 'video' ? state.wall : null
       const wants = playlist.length > 0 || Boolean(wall && wall.url)
@@ -2658,6 +2836,7 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
       const sync = () => {
         applyToDocument(store.get())
         syncVideoLayer(store.get())
+        syncCustomLayer(store.get())
       }
 
       const stopTimers = () => {
@@ -2744,6 +2923,10 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
             videoLayer = null
           }
           clearWarmVideo()
+          if (customLayer) {
+            customLayer.remove()
+            customLayer = null
+          }
           if (warmTimer) {
             window.clearTimeout(warmTimer)
             warmTimer = null
