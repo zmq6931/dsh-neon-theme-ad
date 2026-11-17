@@ -128,6 +128,7 @@ window.__ModuleLoader__.load({
         customPlaceholder: '粘贴 YouTube 链接或 .mp4 直链',
         customPlay: '播放',
         customClear: '清除',
+        customTest: '新标签测试',
         customHint: 'YouTube / Vimeo / B 站链接或 mp4 直链，自动循环播放',
         customResolveFail: 'B 站链接解析失败（可能需要登录或该视频不可用）',
         customYoutubeTip: 'YouTube 提示 Error 153 时表示该页面被禁止嵌入，请改用 mp4 直链',
@@ -257,6 +258,7 @@ window.__ModuleLoader__.load({
         customPlaceholder: 'YouTube link or .mp4 url',
         customPlay: 'Play',
         customClear: 'Clear',
+        customTest: 'Test in tab',
         customHint: 'YouTube / Vimeo / Bilibili link or direct mp4, loops automatically',
         customResolveFail: 'Could not resolve the Bilibili link (login or region required)',
         customYoutubeTip: 'YouTube Error 153 means the page may not embed it; use a direct mp4 url instead',
@@ -1552,6 +1554,28 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
                   tr('customClear'),
                 )
               : null,
+            props.customUrl && /youtu/.test(props.customUrl)
+              ? h(
+                  'button',
+                  {
+                    type: 'button',
+                    className: 'dshneon-chip',
+                    onClick: () => {
+                      const parsed = parseVideoUrl(props.customUrl)
+                      const player =
+                        parsed && parsed.type === 'youtube'
+                          ? 'https://www.youtube-nocookie.com/embed/' +
+                            parsed.id +
+                            '?autoplay=1&loop=1&playlist=' +
+                            parsed.id +
+                            '&controls=0&rel=0&playsinline=1'
+                          : props.customUrl
+                      window.open('/neon-theme/api/embed?src=' + encodeURIComponent(player), '_blank')
+                    },
+                  },
+                  tr('customTest'),
+                )
+              : null,
           ),
           props.customError ? h('span', { className: 'dshneon-row__hint' }, props.customError) : null,
           props.customUrl ? h('span', { className: 'dshneon-row__hint' }, tr('customHint')) : null,
@@ -1949,7 +1973,7 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
               h(
                 'span',
                 { className: 'dshneon-foot__actions' },
-                h('span', { className: 'dshneon-foot__ver' }, 'v0.20.0'),
+                h('span', { className: 'dshneon-foot__ver' }, 'v0.20.1'),
                 h(
                   'button',
                   {
