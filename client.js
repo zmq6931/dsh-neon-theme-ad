@@ -371,6 +371,19 @@ window.__ModuleLoader__.load({
     // row and the overlay, never persisted (a reload starts with it closed).
     // `anchor` carries the trigger's viewport rect so the panel opens right
     // under the button that asked for it.
+    function setOverlayRaised(on) {
+      if (typeof document === 'undefined' || !document.querySelector) return
+      const layer = document.querySelector('[class*="overlayLayer"]')
+      if (!layer || !layer.style) return
+      if (on) {
+        layer.dataset.dshNeonRaised = 'true'
+        layer.style.zIndex = '1200'
+      } else if (layer.dataset && layer.dataset.dshNeonRaised) {
+        delete layer.dataset.dshNeonRaised
+        layer.style.zIndex = ''
+      }
+    }
+
     const ui = {
       open: false,
       anchor: null,
@@ -389,12 +402,14 @@ window.__ModuleLoader__.load({
         this.open = true
         this.anchor = anchor || null
         this.trigger = trigger || null
+        setOverlayRaised(true)
         this.emit()
       },
       hide() {
         if (!this.open) return
         this.open = false
         this.anchor = null
+        setOverlayRaised(false)
         this.emit()
       },
       subscribe(listener) {
@@ -1875,7 +1890,7 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
               h(
                 'span',
                 { className: 'dshneon-foot__actions' },
-                h('span', { className: 'dshneon-foot__ver' }, 'v0.22.0'),
+                h('span', { className: 'dshneon-foot__ver' }, 'v0.22.1'),
                 h(
                   'button',
                   {
@@ -2904,6 +2919,7 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
             saveTimer = null
           }
           remoteSettingsReady = false
+          setOverlayRaised(false)
           if (videoLayer) {
             videoLayer.remove()
             videoLayer = null
