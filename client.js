@@ -129,6 +129,7 @@ window.__ModuleLoader__.load({
         customPlay: '播放',
         customClear: '清除',
         customHint: 'YouTube / Vimeo 链接或 mp4 直链，自动循环播放',
+        customYoutubeTip: 'YouTube 提示 Error 153 时表示该页面被禁止嵌入，请改用 mp4 直链',
         wallCheck: '加入播放列表',
         playlistActive: '播放列表',
         playlistHint: '勾选的视频会依次自动循环',
@@ -256,6 +257,7 @@ window.__ModuleLoader__.load({
         customPlay: 'Play',
         customClear: 'Clear',
         customHint: 'YouTube / Vimeo link or direct mp4, loops automatically',
+        customYoutubeTip: 'YouTube Error 153 means the page may not embed it; use a direct mp4 url instead',
         wallCheck: 'Add to playlist',
         playlistActive: 'Playlist',
         playlistHint: 'Checked clips rotate automatically',
@@ -1546,6 +1548,9 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
               : null,
           ),
           props.customUrl ? h('span', { className: 'dshneon-row__hint' }, tr('customHint')) : null,
+          props.customUrl && /youtu/.test(props.customUrl)
+            ? h('span', { className: 'dshneon-row__hint' }, tr('customYoutubeTip'))
+            : null,
         ),
         current
           ? h(
@@ -1916,7 +1921,7 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
               h(
                 'span',
                 { className: 'dshneon-foot__actions' },
-                h('span', { className: 'dshneon-foot__ver' }, 'v0.19.0'),
+                h('span', { className: 'dshneon-foot__ver' }, 'v0.19.1'),
                 h(
                   'button',
                   {
@@ -2581,6 +2586,7 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
         return
       }
       const muted = state.wallSound === false ? 1 : 0
+      const origin = typeof window !== 'undefined' && window.location ? window.location.origin : ''
       const mediaSrc =
         parsed.type === 'youtube'
           ? 'https://www.youtube.com/embed/' +
@@ -2588,7 +2594,9 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
             '?autoplay=1&loop=1&playlist=' +
             parsed.id +
             '&controls=0&modestbranding=1&playsinline=1&rel=0&enablejsapi=1&mute=' +
-            muted
+            muted +
+            (origin ? '&origin=' + encodeURIComponent(origin) : '') +
+            (origin ? '&widget_referrer=' + encodeURIComponent(origin) : '')
           : parsed.type === 'vimeo'
             ? 'https://player.vimeo.com/video/' + parsed.id + '?autoplay=1&loop=1&background=1&muted=' + muted
             : parsed.src
@@ -2626,8 +2634,13 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
       } else {
         const frame = document.createElement('iframe')
         frame.className = 'dshneon-embed-layer__media'
-        frame.src = mediaSrc
+        frame.src =
+          parsed.type === 'youtube' || parsed.type === 'vimeo'
+            ? '/neon-theme/api/embed?src=' + encodeURIComponent(mediaSrc)
+            : mediaSrc
         frame.setAttribute('allow', 'autoplay; encrypted-media; picture-in-picture; fullscreen')
+        frame.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin')
+        frame.referrerPolicy = 'strict-origin-when-cross-origin'
         frame.setAttribute('allowfullscreen', '')
         frame.setAttribute('scrolling', 'no')
         frame.setAttribute('frameborder', '0')

@@ -579,6 +579,49 @@ const SOURCES = {
   animeclip: animeClipList,
 }
 
+const EMBED_HOSTS = new Set([
+  'www.youtube.com',
+  'youtube.com',
+  'm.youtube.com',
+  'www.youtube-nocookie.com',
+  'youtube-nocookie.com',
+  'player.vimeo.com',
+])
+
+/**
+ * Tiny same-origin wrapper for an embedded player. YouTube's player rejects
+ * pages that send no Referer (error 153); a page served from here always sets
+ * a referrer policy, so the nested player sees a real embedder identity even if
+ * the main GUI document suppresses referrers.
+ */
+function embedPage(params) {
+  let target
+  try {
+    target = new URL(String(params.get('src') || ''))
+  } catch (error) {
+    return new Response('bad src', { status: 400 })
+  }
+  if (!EMBED_HOSTS.has(target.hostname.toLowerCase())) {
+    return new Response('host not allowed', { status: 403 })
+  }
+  const html =
+    '<!doctype html><html><head><meta charset="utf-8">' +
+    '<meta name="referrer" content="strict-origin-when-cross-origin">' +
+    '<style>html,body{margin:0;height:100%;background:#04060e;overflow:hidden}' +
+    'iframe{border:0;width:100%;height:100%;display:block}</style></head><body>' +
+    '<iframe src="' +
+    target.toString().replace(/"/g, '&quot;') +
+    '" referrerpolicy="strict-origin-when-cross-origin" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe>' +
+    '</body></html>'
+  return new Response(html, {
+    headers: {
+      'content-type': 'text/html; charset=utf-8',
+      'referrer-policy': 'strict-origin-when-cross-origin',
+      'cache-control': 'no-store',
+    },
+  })
+}
+
 async function listResponse(params) {
   const source = String(params.get('source') || 'featured')
   const loader = SOURCES[source]
@@ -972,6 +1015,7 @@ async function handleRequest(request) {
   if (!path.startsWith(API_PREFIX)) return jsonResponse({ error: 'not found' }, 404)
   const rest = path.slice(API_PREFIX.length)
   try {
+    if (rest === '/embed') return embedPage(url.searchParams)
     if (rest === '/list') return await listResponse(url.searchParams)
     if (rest === '/audio') return await audioTrackResponse(url.searchParams)
     if (rest === '/media' || rest === '/img') return await mediaResponse(url.searchParams, request)
