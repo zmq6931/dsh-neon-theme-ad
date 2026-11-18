@@ -735,7 +735,7 @@ html.dshneon-wall-in body::before{
   animation:dshneon-wall-fade .6s ease-out, dshneon-wall-pan 90s ease-in-out infinite alternate;
 }
 .dshneon-video-layer{position:fixed;inset:0;z-index:-1;pointer-events:none;overflow:hidden;background:#04060e}
-.dshneon-video-layer__video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.97;filter:brightness(var(--fx-wall-bright,1)) saturate(1.08);will-change:filter;transform:translateZ(0);contain:paint}
+.dshneon-video-layer__video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.97;filter:var(--fx-video-filter,none);transform:translateZ(0);contain:paint}
 .dshneon-video-layer__tint{position:absolute;inset:0;background:linear-gradient(180deg,rgba(4,6,14,.02),rgba(4,6,14,.08))}
 @keyframes dshneon-wall-pan{
   0%{transform:scale(1.03) translate3d(-1%,-0.5%,0)}
@@ -787,6 +787,8 @@ html[data-dsh-neon-scan="off"] .dshneon-frame__sweep{display:none}
 .dshneon-frame__corner--br{bottom:7px;right:7px;border-left:0;border-top:0;border-radius:0 0 13px 0}
 
 /* ---------- composer ring ---------- */
+html[data-dsh-neon-wall="video"] [data-composer-seat],
+html[data-dsh-neon-wall="video"] [data-composer-seat] *{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
 html[data-dsh-neon-frame="on"][data-dsh-neon-ring="on"] [data-composer-seat]{position:relative;z-index:7;isolation:isolate}
 html[data-dsh-neon-frame="on"][data-dsh-neon-ring="on"] [data-composer-seat]::after{
   content:"";position:absolute;inset:-3px;border-radius:22px;pointer-events:none;z-index:1;
@@ -1127,7 +1129,12 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
       // its floor is what actually dims a wallpaper; keep it near zero.
       root.style.setProperty('--fx-side-d', Math.round(Math.max(active ? 1 : 40, density * (active ? 0.6 : 1) - (active ? 0 : 12))) + '%')
       root.style.setProperty('--fx-side-l', Math.round(Math.min(95, Math.max(active ? 42 : 78, density + 2))) + '%')
-      root.style.setProperty('--fx-wall-bright', (0.7 + (state.wallBright / 100) * 1.1).toFixed(2))
+      const wallLight = 0.7 + (state.wallBright / 100) * 1.1
+      root.style.setProperty('--fx-wall-bright', wallLight.toFixed(2))
+      root.style.setProperty(
+        '--fx-video-filter',
+        wallLight > 1.12 || wallLight < 0.95 ? 'brightness(' + wallLight.toFixed(2) + ') saturate(1.06)' : 'none',
+      )
 
       if (custom) {
         root.setAttribute('data-dsh-neon-wall', 'video')
@@ -1171,6 +1178,7 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
         '--fx-accent-2',
         '--fx-wall',
         '--fx-wall-bright',
+        '--fx-video-filter',
       ]) {
         root.style.removeProperty(name)
       }
@@ -1923,7 +1931,7 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
               h(
                 'span',
                 { className: 'dshneon-foot__actions' },
-                h('span', { className: 'dshneon-foot__ver' }, 'v0.22.3'),
+                h('span', { className: 'dshneon-foot__ver' }, 'v0.22.4'),
                 h(
                   'button',
                   {
