@@ -20,6 +20,7 @@ window.__ModuleLoader__.load({
 
     const NS = 'dsh-neon-theme'
     const STORAGE_KEY = 'dsh-neon-theme.settings.v1'
+    const PLAYLIST_LIMIT = 24
     const ATTR = 'data-dsh-neon'
     const ATTR_FRAME = 'data-dsh-neon-frame'
     const ATTR_SCAN = 'data-dsh-neon-scan'
@@ -523,7 +524,7 @@ window.__ModuleLoader__.load({
       next.wallBright = clamp(next.wallBright, 0, 100)
       next.wallLoop = next.wallLoop !== false
       next.playlist = Array.isArray(next.playlist)
-        ? next.playlist.map(sanitizeWall).filter(Boolean).slice(0, 12)
+        ? next.playlist.map(sanitizeWall).filter(Boolean).slice(0, PLAYLIST_LIMIT)
         : []
       const choice = Number(next.rotateSeconds)
       next.rotateSeconds = ROTATE_CHOICES.includes(choice) ? choice : DEFAULTS.rotateSeconds
@@ -1511,7 +1512,7 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
               h(
                 'span',
                 { className: 'dshneon-row__hint' },
-                tr('playlistActive') + ' · ' + playlist.length + ' · ' + tr('playlistHint'),
+                tr('playlistActive') + ' · ' + playlist.length + '/' + PLAYLIST_LIMIT + ' · ' + tr('playlistHint'),
               ),
               h(
                 'button',
@@ -1963,7 +1964,7 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
               h(
                 'span',
                 { className: 'dshneon-foot__actions' },
-                h('span', { className: 'dshneon-foot__ver' }, 'v0.22.5'),
+                h('span', { className: 'dshneon-foot__ver' }, 'v0.22.6'),
                 h(
                   'button',
                   {
@@ -2382,7 +2383,7 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
       if (index >= 0) {
         list.splice(index, 1)
       } else {
-        if (list.length >= 12) {
+        if (list.length >= PLAYLIST_LIMIT) {
           wallStore.patch({ error: 'limit' })
           return
         }
