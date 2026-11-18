@@ -24,6 +24,7 @@ window.__ModuleLoader__.load({
     const ATTR_FRAME = 'data-dsh-neon-frame'
     const ATTR_SCAN = 'data-dsh-neon-scan'
     const ATTR_RING = 'data-dsh-neon-ring'
+    const ATTR_CALM = 'data-dsh-neon-calm'
 
     /* ------------------------------------------------------------------ *
      * Catalog
@@ -80,6 +81,8 @@ window.__ModuleLoader__.load({
         frame: '霓虹边框',
         frameHint: '整窗一圈呼吸光框 + 输入框发光描边',
         ring: '输入框光环',
+        calm: '静默模式',
+        calmHint: '关掉插件所有动画（排查卡顿/抖动用）',
         ringHint: '输入框外圈的霓虹描边，发抖的话关掉它',
         scan: '扫描光',
         scanHint: '一道光自上而下扫过窗口',
@@ -215,6 +218,8 @@ window.__ModuleLoader__.load({
         frame: 'Neon frame',
         frameHint: 'Breathing window frame plus a glowing composer ring',
         ring: 'Composer glow',
+        calm: 'Calm mode',
+        calmHint: 'Stops every animation of the plugin (for diagnosing jitter)',
         ringHint: 'Neon outline around the composer; turn it off if it shakes',
         scan: 'Scan line',
         scanHint: 'A light bar sweeps down the window',
@@ -456,6 +461,7 @@ window.__ModuleLoader__.load({
       lastPeriod: '',
       frame: true,
       ring: true,
+      calm: false,
       scan: true,
       glow: 62,
       speed: 46,
@@ -507,6 +513,7 @@ window.__ModuleLoader__.load({
       next.enabled = next.enabled !== false
       next.frame = next.frame !== false
       next.ring = next.ring !== false
+      next.calm = next.calm === true
       next.scan = next.scan !== false
       next.rotate = next.rotate === true
       next.schedule = next.schedule === true
@@ -786,12 +793,19 @@ html[data-dsh-neon-scan="off"] .dshneon-frame__sweep{display:none}
 .dshneon-frame__corner--bl{bottom:7px;left:7px;border-right:0;border-top:0;border-radius:0 0 0 13px}
 .dshneon-frame__corner--br{bottom:7px;right:7px;border-left:0;border-top:0;border-radius:0 0 13px 0}
 
+/* ---------- calm mode (diagnostics / weak GPUs) ---------- */
+html[data-dsh-neon-calm="on"] body::before,
+html[data-dsh-neon-calm="on"] .dshneon-frame,
+html[data-dsh-neon-calm="on"] .dshneon-frame *,
+html[data-dsh-neon-calm="on"] [data-composer-seat]::after,
+html[data-dsh-neon-calm="on"] .dshneon-video-layer__video{animation:none!important;transition:none!important}
+
 /* ---------- composer ring ---------- */
 html[data-dsh-neon-wall="video"] [data-composer-seat],
 html[data-dsh-neon-wall="video"] [data-composer-seat] *{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
 html[data-dsh-neon-frame="on"][data-dsh-neon-ring="on"] [data-composer-seat]{position:relative;z-index:7;isolation:isolate}
 html[data-dsh-neon-frame="on"][data-dsh-neon-ring="on"] [data-composer-seat]::after{
-  content:"";position:absolute;inset:-3px;border-radius:22px;pointer-events:none;z-index:1;
+  content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:1;
   border:1px solid color-mix(in srgb,var(--fx-accent) 58%,transparent);
   box-shadow:
     0 0 calc(8px + 26px * var(--fx-glow,1)) color-mix(in srgb,var(--fx-accent) 32%,transparent),
@@ -1097,6 +1111,7 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
         root.removeAttribute(ATTR_FRAME)
         root.removeAttribute(ATTR_SCAN)
         root.removeAttribute(ATTR_RING)
+        root.removeAttribute(ATTR_CALM)
         root.removeAttribute('data-dsh-neon-wall')
         return
       }
@@ -1105,6 +1120,7 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
       root.setAttribute(ATTR_FRAME, state.frame ? 'on' : 'off')
       root.setAttribute(ATTR_SCAN, state.scan ? 'on' : 'off')
       root.setAttribute(ATTR_RING, state.ring !== false ? 'on' : 'off')
+      root.setAttribute(ATTR_CALM, state.calm === true ? 'on' : 'off')
 
       const glow = (0.35 + (state.glow / 100) * 1.65).toFixed(2)
       root.style.setProperty('--fx-glow', glow)
@@ -1164,6 +1180,7 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
       root.removeAttribute(ATTR_FRAME)
       root.removeAttribute(ATTR_SCAN)
       root.removeAttribute(ATTR_RING)
+      root.removeAttribute(ATTR_CALM)
       root.removeAttribute('data-dsh-neon-wall')
       root.classList.remove('dshneon-wall-in')
       for (const name of [
@@ -1883,6 +1900,21 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
                   onChange: (value) => update({ scan: value }),
                 }),
               ),
+              h(
+                'div',
+                { className: 'dshneon-row' },
+                h(
+                  'div',
+                  { className: 'dshneon-row__text' },
+                  h('span', { className: 'dshneon-row__label' }, tr('calm')),
+                  h('span', { className: 'dshneon-row__hint' }, tr('calmHint')),
+                ),
+                h(Switch, {
+                  checked: state.calm === true,
+                  label: tr('calm'),
+                  onChange: (value) => update({ calm: value }),
+                }),
+              ),
               h('div', { className: 'dshneon-row__label' }, tr('glow')),
               h(Range, {
                 value: state.glow,
@@ -1931,7 +1963,7 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
               h(
                 'span',
                 { className: 'dshneon-foot__actions' },
-                h('span', { className: 'dshneon-foot__ver' }, 'v0.22.4'),
+                h('span', { className: 'dshneon-foot__ver' }, 'v0.22.5'),
                 h(
                   'button',
                   {
