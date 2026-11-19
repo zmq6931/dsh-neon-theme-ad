@@ -20,19 +20,19 @@
         "zh": "十款纯代码动态皮肤、呼吸霓虹边框、输入框光环，外加壁纸库（Wallhaven / Bing / Picsum / Mixkit 动态素材 / Sakugabooru 番剧高光），支持播放列表与本机缓存。"
       },
       "icon": "icons/neon.svg",
-      "author": "Andy",
+      "author": "Andy Zhu",
       "homepage": "https://github.com/zmq6931/dsh-neon-theme-ad#readme",
       "repository": {
         "url": "https://github.com/zmq6931/dsh-neon-theme-ad"
       },
       "versions": [
         {
-          "version": "0.22.7",
-          "publishTimestamp": 1795082973,
+          "version": "0.22.8",
+          "publishTimestamp": 1795084073,
           "source": {
             "type": "git",
             "url": "https://github.com/zmq6931/dsh-neon-theme-ad",
-            "commit": "2f8574291137f2f81f063935b8a774cc3d340dd6"
+            "commit": "60576d045d33ca38050174a242761da08f8c6192"
           }
         }
       ]
