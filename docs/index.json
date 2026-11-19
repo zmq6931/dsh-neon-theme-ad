@@ -1,6 +1,9 @@
 {
   "format": 1,
-  "title": { "en": "Neon theme", "zh": "霓虹主题" },
+  "title": {
+    "en": "Neon theme",
+    "zh": "霓虹主题"
+  },
   "description": {
     "en": "Animated neon skins and a free wallpaper shelf for the DSH Web GUI.",
     "zh": "给 DSH Web 界面加上动态霓虹皮肤、呼吸边框和免费壁纸库。"
@@ -8,7 +11,10 @@
   "plugins": [
     {
       "name": "dsh-neon-theme-ad",
-      "title": { "en": "Neon theme engine", "zh": "霓虹主题引擎" },
+      "title": {
+        "en": "Neon theme engine",
+        "zh": "霓虹主题引擎"
+      },
       "description": {
         "en": "Ten code-drawn animated skins, a breathing neon window frame, a glowing composer ring, and a wallpaper shelf (Wallhaven / Bing / Picsum / Mixkit live clips / Sakugabooru anime highlights) with playlists and a local cache.",
         "zh": "十款纯代码动态皮肤、呼吸霓虹边框、输入框光环，外加壁纸库（Wallhaven / Bing / Picsum / Mixkit 动态素材 / Sakugabooru 番剧高光），支持播放列表与本机缓存。"
@@ -16,11 +22,13 @@
       "icon": "icons/neon.svg",
       "author": "Andy",
       "homepage": "https://github.com/zmq6931/dsh-neon-theme-ad#readme",
-      "repository": { "url": "https://github.com/zmq6931/dsh-neon-theme-ad" },
+      "repository": {
+        "url": "https://github.com/zmq6931/dsh-neon-theme-ad"
+      },
       "versions": [
         {
           "version": "0.22.7",
-          "publishTimestamp": 1763560000,
+          "publishTimestamp": 1795082973,
           "source": {
             "type": "git",
             "url": "https://github.com/zmq6931/dsh-neon-theme-ad",
