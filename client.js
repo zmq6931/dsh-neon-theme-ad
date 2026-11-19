@@ -20,7 +20,7 @@ window.__ModuleLoader__.load({
 
     const NS = 'dsh-neon-theme'
     const STORAGE_KEY = 'dsh-neon-theme.settings.v1'
-    const PLAYLIST_LIMIT = 24
+    const PLAYLIST_LIMIT = 50
     const ATTR = 'data-dsh-neon'
     const ATTR_FRAME = 'data-dsh-neon-frame'
     const ATTR_SCAN = 'data-dsh-neon-scan'
@@ -1964,7 +1964,7 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
               h(
                 'span',
                 { className: 'dshneon-foot__actions' },
-                h('span', { className: 'dshneon-foot__ver' }, 'v0.22.6'),
+                h('span', { className: 'dshneon-foot__ver' }, 'v0.22.7'),
                 h(
                   'button',
                   {
