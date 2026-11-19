@@ -16,6 +16,14 @@ DSH Web 界面的主题插件：**纯代码绘制的动态背景** + **免费壁
 https://github.com/zmq6931/dsh-neon-theme-ad
 ```
 
+**通过插件索引（发现）**：本仓库托管了一份 DSH 插件索引，添加后可以在「发现」里搜索安装：
+
+```
+https://zmq6931.github.io/dsh-neon-theme-ad/index.json
+```
+
+插件 → 实验性插件 → 打开「自定义插件索引」→ 发现 → 添加索引源 → 粘贴上面的地址。
+
 **CLI**：
 
 ```bash
