@@ -1305,7 +1305,9 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
       const kind = state.kind === 'video' ? 'video' : 'image'
       const imageChips = WALL_SOURCES.filter((source) => source.kind === 'image')
       const clipChips = WALL_SOURCES.filter((source) => source.kind === 'video' && source.group === 'clips')
-      const animeChips = WALL_SOURCES.filter((source) => source.kind === 'video' && source.group === 'anime')
+      const animeChips = WALL_SOURCES.filter(
+        (source) => source.kind === 'video' && (source.group === 'anime' || source.group === 'cute'),
+      )
 
       const chip = (source) =>
         h(
@@ -2003,7 +2005,7 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
               h(
                 'span',
                 { className: 'dshneon-foot__actions' },
-                h('span', { className: 'dshneon-foot__ver' }, 'v0.23.0'),
+                h('span', { className: 'dshneon-foot__ver' }, 'v0.23.1'),
                 h(
                   'button',
                   {
