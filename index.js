@@ -153,6 +153,17 @@ const ANIME_SERIES = {
   lycoris: { label: '莉可丽丝', tags: ['lycoris_recoil'] },
   yurucamp: { label: '摇曳露营', tags: ['yuru_camp'] },
   comicgirls: { label: '漫画女孩', tags: ['comic_girls'] },
+  // Mature / stylish female-led action.
+  gits: { label: '攻壳机动队', tags: ['ghost_in_the_shell'] },
+  blacklagoon: { label: '黑礁', tags: ['black_lagoon'] },
+  edgerunners: { label: '赛博朋克：边缘行者', tags: ['cyberpunk:_edgerunners'] },
+  killlakill: { label: '斩服少女', tags: ['kill_la_kill'] },
+  akame: { label: '斩·赤红之瞳', tags: ['akame_ga_kill!'] },
+  fgo: { label: 'Fate/Grand Order', tags: ['fate/grand_order'] },
+  fatestay: { label: 'Fate/stay night', tags: ['fate/stay_night'] },
+  azurlane: { label: '碧蓝航线', tags: ['azur_lane'] },
+  bluearchive: { label: '蔚蓝档案', tags: ['blue_archive'] },
+  kancolle: { label: '舰队Collection', tags: ['kantai_collection'] },
 }
 
 const listCache = new Map()
@@ -706,6 +717,8 @@ const SOURCES = {
   animal: wallhavenSource('animal', '111', 'animal'),
   slamdunk: wallhavenSource('slamdunk', '111', 'slam dunk'),
   sakuragi: wallhavenSource('sakuragi', '111', 'sakuragi'),
+  swimsuit: wallhavenSource('swimsuit', '111', 'swimsuit'),
+  beach: wallhavenSource('beach', '111', 'beach'),
   anime: wallhavenSource('anime', '010'),
   cyber: wallhavenSource('cyber', '111', 'cyberpunk'),
   space: wallhavenSource('space', '111', 'space'),

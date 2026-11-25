@@ -112,6 +112,8 @@ window.__ModuleLoader__.load({
         wallAnimal: '动物',
         wallSlamArt: '灌篮壁纸',
         wallSakuragi: '樱木花道',
+        wallSwimsuit: '泳装',
+        wallBeach: '沙滩',
         wallAnime: '动漫',
         wallCyber: '赛博',
         wallSpace: '太空',
@@ -185,6 +187,17 @@ window.__ModuleLoader__.load({
         animeLycoris: '莉可丽丝',
         animeYuruCamp: '摇曳露营',
         animeComicGirls: '漫画女孩',
+        wallGroupMature: '成熟 · 御姐',
+        animeGits: '攻壳机动队',
+        animeBlackLagoon: '黑礁',
+        animeEdgerunners: '赛博朋克：边缘行者',
+        animeKillLaKill: '斩服少女',
+        animeAkame: '斩·赤红之瞳',
+        animeFGO: 'Fate/Grand Order',
+        animeFateStay: 'Fate/stay night',
+        animeAzurLane: '碧蓝航线',
+        animeBlueArchive: '蔚蓝档案',
+        animeKanColle: '舰队Collection',
         animeDemon: '鬼灭之刃',
         animeDragon: '龙珠',
         animeTennis: '网球王子',
@@ -262,6 +275,8 @@ window.__ModuleLoader__.load({
         wallAnimal: 'Animals',
         wallSlamArt: 'Slam Dunk art',
         wallSakuragi: 'Sakuragi',
+        wallSwimsuit: 'Swimsuit',
+        wallBeach: 'Beach',
         wallAnime: 'Anime',
         wallCyber: 'Cyber',
         wallSpace: 'Space',
@@ -335,6 +350,17 @@ window.__ModuleLoader__.load({
         animeLycoris: 'Lycoris Recoil',
         animeYuruCamp: 'Laid-Back Camp',
         animeComicGirls: 'Comic Girls',
+        wallGroupMature: 'Mature',
+        animeGits: 'Ghost in the Shell',
+        animeBlackLagoon: 'Black Lagoon',
+        animeEdgerunners: 'Cyberpunk: Edgerunners',
+        animeKillLaKill: 'Kill la Kill',
+        animeAkame: 'Akame ga Kill!',
+        animeFGO: 'Fate/Grand Order',
+        animeFateStay: 'Fate/stay night',
+        animeAzurLane: 'Azur Lane',
+        animeBlueArchive: 'Blue Archive',
+        animeKanColle: 'KanColle',
         animeDemon: 'Demon Slayer',
         animeDragon: 'Dragon Ball',
         animeTennis: 'Prince of Tennis',
@@ -1306,7 +1332,7 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
       const imageChips = WALL_SOURCES.filter((source) => source.kind === 'image')
       const clipChips = WALL_SOURCES.filter((source) => source.kind === 'video' && source.group === 'clips')
       const animeChips = WALL_SOURCES.filter(
-        (source) => source.kind === 'video' && (source.group === 'anime' || source.group === 'cute'),
+        (source) => source.kind === 'video' && (source.group === 'anime' || source.group === 'cute' || source.group === 'mature'),
       )
 
       const chip = (source) =>
@@ -1417,6 +1443,13 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
                     { label: tr('wallGroupCute') },
                     animeChips
                       .filter((source) => source.group === 'cute')
+                      .map((source) => h('option', { key: source.id, value: source.id }, tr(source.key))),
+                  ),
+                  h(
+                    'optgroup',
+                    { label: tr('wallGroupMature') },
+                    animeChips
+                      .filter((source) => source.group === 'mature')
                       .map((source) => h('option', { key: source.id, value: source.id }, tr(source.key))),
                   ),
                 ),
@@ -2005,7 +2038,7 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
               h(
                 'span',
                 { className: 'dshneon-foot__actions' },
-                h('span', { className: 'dshneon-foot__ver' }, 'v0.23.1'),
+                h('span', { className: 'dshneon-foot__ver' }, 'v0.23.2'),
                 h(
                   'button',
                   {
@@ -2119,6 +2152,8 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
       { id: 'animal', kind: 'image', key: 'wallAnimal' },
       { id: 'slamdunk', kind: 'image', key: 'wallSlamArt' },
       { id: 'sakuragi', kind: 'image', key: 'wallSakuragi' },
+      { id: 'swimsuit', kind: 'image', key: 'wallSwimsuit' },
+      { id: 'beach', kind: 'image', key: 'wallBeach' },
       { id: 'anime', kind: 'image', key: 'wallAnime' },
       { id: 'cyber', kind: 'image', key: 'wallCyber' },
       { id: 'space', kind: 'image', key: 'wallSpace' },
@@ -2168,6 +2203,16 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
       { id: 'animeclip:lycoris', kind: 'video', group: 'cute', key: 'animeLycoris' },
       { id: 'animeclip:yurucamp', kind: 'video', group: 'cute', key: 'animeYuruCamp' },
       { id: 'animeclip:comicgirls', kind: 'video', group: 'cute', key: 'animeComicGirls' },
+      { id: 'animeclip:gits', kind: 'video', group: 'mature', key: 'animeGits' },
+      { id: 'animeclip:blacklagoon', kind: 'video', group: 'mature', key: 'animeBlackLagoon' },
+      { id: 'animeclip:edgerunners', kind: 'video', group: 'mature', key: 'animeEdgerunners' },
+      { id: 'animeclip:killlakill', kind: 'video', group: 'mature', key: 'animeKillLaKill' },
+      { id: 'animeclip:akame', kind: 'video', group: 'mature', key: 'animeAkame' },
+      { id: 'animeclip:fgo', kind: 'video', group: 'mature', key: 'animeFGO' },
+      { id: 'animeclip:fatestay', kind: 'video', group: 'mature', key: 'animeFateStay' },
+      { id: 'animeclip:azurlane', kind: 'video', group: 'mature', key: 'animeAzurLane' },
+      { id: 'animeclip:bluearchive', kind: 'video', group: 'mature', key: 'animeBlueArchive' },
+      { id: 'animeclip:kancolle', kind: 'video', group: 'mature', key: 'animeKanColle' },
       { id: 'animeclip:slam', kind: 'video', group: 'anime', key: 'animeSlam' },
       { id: 'animeclip:slam_movie', kind: 'video', group: 'anime', key: 'animeSlamMovie' },
       { id: 'animeclip:dragon', kind: 'video', group: 'anime', key: 'animeDragon' },
