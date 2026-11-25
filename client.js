@@ -114,6 +114,9 @@ window.__ModuleLoader__.load({
         wallSakuragi: '樱木花道',
         wallSwimsuit: '泳装',
         wallBeach: '沙滩',
+        wallBikini: '比基尼',
+        wallCosplay: 'Cosplay',
+        wallGlamour: '魅惑',
         wallAnime: '动漫',
         wallCyber: '赛博',
         wallSpace: '太空',
@@ -279,6 +282,9 @@ window.__ModuleLoader__.load({
         wallSakuragi: 'Sakuragi',
         wallSwimsuit: 'Swimsuit',
         wallBeach: 'Beach',
+        wallBikini: 'Bikini',
+        wallCosplay: 'Cosplay',
+        wallGlamour: 'Glamour',
         wallAnime: 'Anime',
         wallCyber: 'Cyber',
         wallSpace: 'Space',
@@ -2067,7 +2073,7 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
               h(
                 'span',
                 { className: 'dshneon-foot__actions' },
-                h('span', { className: 'dshneon-foot__ver' }, 'v0.23.6'),
+                h('span', { className: 'dshneon-foot__ver' }, 'v0.23.7'),
                 h(
                   'button',
                   {
@@ -2183,6 +2189,9 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
       { id: 'sakuragi', kind: 'image', key: 'wallSakuragi' },
       { id: 'swimsuit', kind: 'image', key: 'wallSwimsuit' },
       { id: 'beach', kind: 'image', key: 'wallBeach' },
+      { id: 'bikini', kind: 'image', key: 'wallBikini' },
+      { id: 'cosplay', kind: 'image', key: 'wallCosplay' },
+      { id: 'glamour', kind: 'image', key: 'wallGlamour' },
       { id: 'anime', kind: 'image', key: 'wallAnime' },
       { id: 'cyber', kind: 'image', key: 'wallCyber' },
       { id: 'space', kind: 'image', key: 'wallSpace' },
