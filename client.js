@@ -200,6 +200,17 @@ window.__ModuleLoader__.load({
         animeAzurLane: '碧蓝航线',
         animeBlueArchive: '蔚蓝档案',
         animeKanColle: '舰队Collection',
+        wallGroupAdult: '成人向 · 深色',
+        animeCastlevania: '恶魔城',
+        animeRickMorty: '瑞克和莫蒂',
+        animeArcane: '双城之战',
+        animeInvincible: '无敌少侠',
+        animeDevilman: '恶魔人 Crybaby',
+        animeAkira: '阿基拉',
+        animePerfectBlue: '未麻的部屋',
+        animeBerserk: '剑风传奇',
+        animeTokyoGhoul: '东京喰种',
+        animeMadeInAbyss: '来自深渊',
         animeDemon: '鬼灭之刃',
         animeDragon: '龙珠',
         animeTennis: '网球王子',
@@ -365,6 +376,17 @@ window.__ModuleLoader__.load({
         animeAzurLane: 'Azur Lane',
         animeBlueArchive: 'Blue Archive',
         animeKanColle: 'KanColle',
+        wallGroupAdult: 'Adult animation',
+        animeCastlevania: 'Castlevania',
+        animeRickMorty: 'Rick and Morty',
+        animeArcane: 'Arcane',
+        animeInvincible: 'Invincible',
+        animeDevilman: 'Devilman Crybaby',
+        animeAkira: 'Akira',
+        animePerfectBlue: 'Perfect Blue',
+        animeBerserk: 'Berserk',
+        animeTokyoGhoul: 'Tokyo Ghoul',
+        animeMadeInAbyss: 'Made in Abyss',
         animeDemon: 'Demon Slayer',
         animeDragon: 'Dragon Ball',
         animeTennis: 'Prince of Tennis',
@@ -1344,8 +1366,17 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
         return tr(source.key).toLowerCase().includes(query) || source.id.toLowerCase().includes(query)
       }
       const animeChips = WALL_SOURCES.filter(
-        (source) => source.kind === 'video' && (source.group === 'anime' || source.group === 'cute' || source.group === 'mature'),
+        (source) => source.kind === 'video' && (source.group === 'anime' || source.group === 'cute' || source.group === 'mature' || source.group === 'adult'),
       )
+      const animeCollator = new Intl.Collator(
+        /[\u4e00-\u9fff]/.test(tr('wallGroupAnime')) ? 'zh-Hans-CN' : 'en',
+        { numeric: true, sensitivity: 'base' },
+      )
+      const animeOrder = animeChips.slice().sort((left, right) => {
+        if (left.id === 'animeclip:top') return -1
+        if (right.id === 'animeclip:top') return 1
+        return animeCollator.compare(tr(left.key), tr(right.key))
+      })
 
       const chip = (source) =>
         h(
@@ -1454,22 +1485,29 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
                   h(
                     'optgroup',
                     { label: tr('wallGroupAnime') },
-                    animeChips
+                    animeOrder
                       .filter((source) => source.group !== 'cute' && animeMatches(source))
                       .map((source) => h('option', { key: source.id, value: source.id }, tr(source.key))),
                   ),
                   h(
                     'optgroup',
                     { label: tr('wallGroupCute') },
-                    animeChips
+                    animeOrder
                       .filter((source) => source.group === 'cute' && animeMatches(source))
                       .map((source) => h('option', { key: source.id, value: source.id }, tr(source.key))),
                   ),
                   h(
                     'optgroup',
                     { label: tr('wallGroupMature') },
-                    animeChips
+                    animeOrder
                       .filter((source) => source.group === 'mature' && animeMatches(source))
+                      .map((source) => h('option', { key: source.id, value: source.id }, tr(source.key))),
+                  ),
+                  h(
+                    'optgroup',
+                    { label: tr('wallGroupAdult') },
+                    animeOrder
+                      .filter((source) => source.group === 'adult' && animeMatches(source))
                       .map((source) => h('option', { key: source.id, value: source.id }, tr(source.key))),
                   ),
                 ),
@@ -2058,7 +2096,7 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
               h(
                 'span',
                 { className: 'dshneon-foot__actions' },
-                h('span', { className: 'dshneon-foot__ver' }, 'v0.23.4'),
+                h('span', { className: 'dshneon-foot__ver' }, 'v0.23.5'),
                 h(
                   'button',
                   {
@@ -2234,6 +2272,16 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
       { id: 'animeclip:azurlane', kind: 'video', group: 'mature', key: 'animeAzurLane' },
       { id: 'animeclip:bluearchive', kind: 'video', group: 'mature', key: 'animeBlueArchive' },
       { id: 'animeclip:kancolle', kind: 'video', group: 'mature', key: 'animeKanColle' },
+      { id: 'animeclip:castlevania', kind: 'video', group: 'adult', key: 'animeCastlevania' },
+      { id: 'animeclip:rickmorty', kind: 'video', group: 'adult', key: 'animeRickMorty' },
+      { id: 'animeclip:arcane', kind: 'video', group: 'adult', key: 'animeArcane' },
+      { id: 'animeclip:invincible', kind: 'video', group: 'adult', key: 'animeInvincible' },
+      { id: 'animeclip:devilman', kind: 'video', group: 'adult', key: 'animeDevilman' },
+      { id: 'animeclip:akira', kind: 'video', group: 'adult', key: 'animeAkira' },
+      { id: 'animeclip:perfectblue', kind: 'video', group: 'adult', key: 'animePerfectBlue' },
+      { id: 'animeclip:berserk', kind: 'video', group: 'adult', key: 'animeBerserk' },
+      { id: 'animeclip:tokyoghoul', kind: 'video', group: 'adult', key: 'animeTokyoGhoul' },
+      { id: 'animeclip:madeinabyss', kind: 'video', group: 'adult', key: 'animeMadeInAbyss' },
       { id: 'animeclip:slam', kind: 'video', group: 'anime', key: 'animeSlam' },
       { id: 'animeclip:slam_movie', kind: 'video', group: 'anime', key: 'animeSlamMovie' },
       { id: 'animeclip:dragon', kind: 'video', group: 'anime', key: 'animeDragon' },
