@@ -2,3 +2,12 @@ node_modules/
 *.log
 .DS_Store
 Thumbs.db
+
+# Local-only material that must never be published.
+# Drop personal clips or images in these folders (or name files *.local.*)
+# and they stay out of the repository.
+local/
+private/
+adult/
+*.local.*
+*.private.*

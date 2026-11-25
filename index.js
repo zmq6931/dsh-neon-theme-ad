@@ -168,17 +168,6 @@ const ANIME_SERIES = {
   azurlane: { label: '碧蓝航线', tags: ['azur_lane'] },
   bluearchive: { label: '蔚蓝档案', tags: ['blue_archive'] },
   kancolle: { label: '舰队Collection', tags: ['kantai_collection'] },
-  // Adult-oriented animation: dark themes and violence, still SFW clips.
-  castlevania: { label: '恶魔城', tags: ['castlevania'] },
-  rickmorty: { label: '瑞克和莫蒂', tags: ['rick_and_morty'] },
-  arcane: { label: '双城之战', tags: ['arcane'] },
-  invincible: { label: '无敌少侠', tags: ['invincible'] },
-  devilman: { label: '恶魔人 Crybaby', tags: ['devilman_crybaby'] },
-  akira: { label: '阿基拉', tags: ['akira'] },
-  perfectblue: { label: '未麻的部屋', tags: ['perfect_blue'] },
-  berserk: { label: '剑风传奇', tags: ['berserk'] },
-  tokyoghoul: { label: '东京喰种', tags: ['tokyo_ghoul'] },
-  madeinabyss: { label: '来自深渊', tags: ['made_in_abyss'] },
 }
 
 const listCache = new Map()
