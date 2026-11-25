@@ -75,6 +75,10 @@ const MIXKIT_ALLOWED = new Set([
   'technology',
   'travel',
   'food',
+  'summer',
+  'beach',
+  'pool',
+  'vacation',
 ])
 
 // Animation clips from Sakugabooru (fan-archived TV/movie animation), keyed by
