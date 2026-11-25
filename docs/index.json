@@ -27,12 +27,12 @@
       },
       "versions": [
         {
-          "version": "0.23.0",
-          "publishTimestamp": 1795583244,
+          "version": "0.23.1",
+          "publishTimestamp": 1795586052,
           "source": {
             "type": "git",
             "url": "https://github.com/zmq6931/dsh-neon-theme-ad",
-            "commit": "71085f32f135eefc9c01e64eb4540067647bb697"
+            "commit": "69ecdfe464255f59a4094f9c946c5fe1b305b351"
           }
         }
       ]
