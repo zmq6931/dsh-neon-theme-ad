@@ -391,6 +391,67 @@ function wallhavenSource(kind, categories, query) {
   }
 }
 
+const wallhavenCatalogCache = new Map()
+
+/**
+ * A Wallhaven category that merges several related searches into one paged
+ * catalog, so a narrow query like "bikini" is not limited to its own pages.
+ */
+function wallhavenMergedSource(kind, categories, queries, atleast) {
+  return async (page) => {
+    let catalog = wallhavenCatalogCache.get(kind)
+    if (!catalog || Date.now() - catalog.at > LIST_TTL_MS) {
+      const perQuery = []
+      // Sequential and gently paced: Wallhaven answers a burst of searches with
+      // 429s, and one swallowed error used to blank the whole category.
+      for (const query of queries) {
+        const collected = []
+        for (let current = 1; current <= 3; current += 1) {
+          const search = new URLSearchParams({
+            categories,
+            purity: '100',
+            atleast,
+            page: String(current),
+            sorting: 'relevance',
+            q: query,
+          })
+          let result = null
+          for (let attempt = 0; attempt < 2 && !result; attempt += 1) {
+            try {
+              result = await wallhavenPage(search, kind)
+            } catch (error) {
+              await new Promise((resolve) => setTimeout(resolve, 900))
+            }
+          }
+          if (!result) break
+          collected.push(...result.items)
+          if (result.items.length < 24) break
+          await new Promise((resolve) => setTimeout(resolve, 150))
+        }
+        perQuery.push(collected)
+        await new Promise((resolve) => setTimeout(resolve, 150))
+      }
+      const seen = new Set()
+      const merged = []
+      for (const item of perQuery.flat()) {
+        if (seen.has(item.id)) continue
+        seen.add(item.id)
+        merged.push(item)
+      }
+      catalog = { at: Date.now(), items: merged }
+      // Never cache an empty catalog: a rate-limited run would hide the whole
+      // category for the cache lifetime.
+      if (merged.length > 0) wallhavenCatalogCache.set(kind, catalog)
+    }
+    const pageSize = 24
+    const start = (page - 1) * pageSize
+    return {
+      lastPage: Math.max(1, Math.ceil(catalog.items.length / pageSize)),
+      items: catalog.items.slice(start, start + pageSize),
+    }
+  }
+}
+
 async function bingList() {
   const response = await fetchWithTimeout('https://www.bing.com/HPImageArchive.aspx?format=js&idx=0&n=8&mkt=zh-CN')
   if (!response.ok) throw new Error('bing ' + response.status)
@@ -723,7 +784,7 @@ const SOURCES = {
   sakuragi: wallhavenSource('sakuragi', '111', 'sakuragi'),
   swimsuit: wallhavenSource('swimsuit', '111', 'swimsuit'),
   beach: wallhavenSource('beach', '111', 'beach'),
-  bikini: wallhavenSource('bikini', '111', 'bikini'),
+  bikini: wallhavenMergedSource('bikini', '111', ['bikini', 'bikini girl', 'swimsuit', 'beach girl', 'pool', 'beach'], '1920x1080'),
   cosplay: wallhavenSource('cosplay', '111', 'cosplay'),
   glamour: wallhavenSource('glamour', '111', 'sexy'),
   anime: wallhavenSource('anime', '010'),
