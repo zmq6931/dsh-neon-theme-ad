@@ -125,6 +125,7 @@ window.__ModuleLoader__.load({
         wallTabVideo: '动态视频',
         wallGroupClips: '素材',
         wallGroupAnime: '番剧',
+        animeSearch: '搜索番剧…',
         localLabel: '本地',
         localPick: '选择视频…',
         localClear: '移除',
@@ -289,6 +290,7 @@ window.__ModuleLoader__.load({
         wallTabVideo: 'Live video',
         wallGroupClips: 'Clips',
         wallGroupAnime: 'Anime',
+        animeSearch: 'Search series…',
         localLabel: 'Local',
         localPick: 'Pick video…',
         localClear: 'Remove',
@@ -1028,6 +1030,8 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
 .dshneon-walltabs{display:flex;gap:6px;margin:10px 0 0}
 .dshneon-wallgroup-label{font-size:11px;line-height:1;color:var(--dsw-alias-label-secondary);margin-right:2px;flex:none}
 .dshneon-wallselect{flex:1;min-width:0;max-width:100%}
+.dshneon-wallbar--stack{flex-wrap:wrap}
+.dshneon-animesearch{width:100%;height:24px;margin:2px 0 4px;font-size:11.5px}
 .dshneon-row--stack{flex-direction:column;align-items:stretch;gap:6px}
 .dshneon-custombar{display:flex;align-items:center;gap:6px}
 .dshneon-custominput{
@@ -1318,6 +1322,7 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
       const [state, setState] = React.useState(() => wallStore.state)
       const [hover, setHover] = React.useState('')
       const [customDraft, setCustomDraft] = React.useState(() => props.customUrl || '')
+      const [animeQuery, setAnimeQuery] = React.useState('')
 
       React.useEffect(() => wallStore.subscribe(() => setState(wallStore.state)), [])
       React.useEffect(() => {
@@ -1333,6 +1338,11 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
       const kind = state.kind === 'video' ? 'video' : 'image'
       const imageChips = WALL_SOURCES.filter((source) => source.kind === 'image')
       const clipChips = WALL_SOURCES.filter((source) => source.kind === 'video' && source.group === 'clips')
+      const animeMatches = (source) => {
+        const query = animeQuery.trim().toLowerCase()
+        if (!query) return true
+        return tr(source.key).toLowerCase().includes(query) || source.id.toLowerCase().includes(query)
+      }
       const animeChips = WALL_SOURCES.filter(
         (source) => source.kind === 'video' && (source.group === 'anime' || source.group === 'cute' || source.group === 'mature'),
       )
@@ -1421,8 +1431,16 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
               ),
               h(
                 'div',
-                { className: 'dshneon-wallbar' },
+                { className: 'dshneon-wallbar dshneon-wallbar--stack' },
                 h('span', { className: 'dshneon-wallgroup-label' }, tr('wallGroupAnime')),
+                h('input', {
+                  type: 'search',
+                  className: 'dshneon-custominput dshneon-animesearch',
+                  placeholder: tr('animeSearch'),
+                  value: animeQuery,
+                  spellcheck: false,
+                  onChange: (event) => setAnimeQuery(event.target.value),
+                }),
                 h(
                   'select',
                   {
@@ -1437,21 +1455,21 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
                     'optgroup',
                     { label: tr('wallGroupAnime') },
                     animeChips
-                      .filter((source) => source.group !== 'cute')
+                      .filter((source) => source.group !== 'cute' && animeMatches(source))
                       .map((source) => h('option', { key: source.id, value: source.id }, tr(source.key))),
                   ),
                   h(
                     'optgroup',
                     { label: tr('wallGroupCute') },
                     animeChips
-                      .filter((source) => source.group === 'cute')
+                      .filter((source) => source.group === 'cute' && animeMatches(source))
                       .map((source) => h('option', { key: source.id, value: source.id }, tr(source.key))),
                   ),
                   h(
                     'optgroup',
                     { label: tr('wallGroupMature') },
                     animeChips
-                      .filter((source) => source.group === 'mature')
+                      .filter((source) => source.group === 'mature' && animeMatches(source))
                       .map((source) => h('option', { key: source.id, value: source.id }, tr(source.key))),
                   ),
                 ),
@@ -2040,7 +2058,7 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
               h(
                 'span',
                 { className: 'dshneon-foot__actions' },
-                h('span', { className: 'dshneon-foot__ver' }, 'v0.23.3'),
+                h('span', { className: 'dshneon-foot__ver' }, 'v0.23.4'),
                 h(
                   'button',
                   {
