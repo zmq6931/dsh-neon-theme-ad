@@ -140,6 +140,19 @@ const ANIME_SERIES = {
   eva: { label: '新世纪福音战士', tags: ['neon_genesis_evangelion'] },
   violet: { label: '紫罗兰永恒花园', tags: ['violet_evergarden'] },
   gintama: { label: '银魂', tags: ['gintama'] },
+  // Cute slice-of-life / girls' club shows.
+  bocchi: { label: '孤独摇滚', tags: ['bocchi_the_rock!'] },
+  kon: { label: '轻音少女', tags: ['k-on!'] },
+  nichijou: { label: '日常', tags: ['nichijou'] },
+  maidragon: { label: '小林家的龙女仆', tags: ['kobayashi-san_chi_no_maid_dragon'] },
+  hibike: { label: '吹响！上低音号', tags: ['hibike!_euphonium'] },
+  luckystar: { label: '幸运星', tags: ['lucky_star'] },
+  hidamari: { label: '向阳素描', tags: ['hidamari_sketch'] },
+  tamako: { label: '玉子市场', tags: ['tamako_market'] },
+  kyoukai: { label: '境界的彼方', tags: ['kyoukai_no_kanata'] },
+  lycoris: { label: '莉可丽丝', tags: ['lycoris_recoil'] },
+  yurucamp: { label: '摇曳露营', tags: ['yuru_camp'] },
+  comicgirls: { label: '漫画女孩', tags: ['comic_girls'] },
 }
 
 const listCache = new Map()
@@ -652,7 +665,9 @@ async function animeCatalog(entry) {
     merged.push(row)
   }
   merged.sort((left, right) => (Number(right.score) || 0) - (Number(left.score) || 0))
-  animeCatalogCache.set(key, { at: Date.now(), items: merged })
+  // Never cache an empty catalog: one transient upstream failure would
+  // otherwise hide the whole series for the cache lifetime.
+  if (merged.length > 0) animeCatalogCache.set(key, { at: Date.now(), items: merged })
   return merged
 }
 
