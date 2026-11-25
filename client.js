@@ -174,6 +174,7 @@ window.__ModuleLoader__.load({
         animeEva: '新世纪福音战士',
         animeViolet: '紫罗兰永恒花园',
         animeGintama: '银魂',
+        animeSlayers: '秀逗魔导士',
         wallGroupCute: '可爱日常',
         animeBocchi: '孤独摇滚',
         animeKon: '轻音少女',
@@ -337,6 +338,7 @@ window.__ModuleLoader__.load({
         animeEva: 'Evangelion',
         animeViolet: 'Violet Evergarden',
         animeGintama: 'Gintama',
+        animeSlayers: 'Slayers',
         wallGroupCute: 'Cute & cozy',
         animeBocchi: 'Bocchi the Rock!',
         animeKon: 'K-On!',
@@ -2038,7 +2040,7 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
               h(
                 'span',
                 { className: 'dshneon-foot__actions' },
-                h('span', { className: 'dshneon-foot__ver' }, 'v0.23.2'),
+                h('span', { className: 'dshneon-foot__ver' }, 'v0.23.3'),
                 h(
                   'button',
                   {
@@ -2191,6 +2193,7 @@ html[data-dsh-neon-frame="off"] [data-composer-seat]::after{content:none}
       { id: 'animeclip:eva', kind: 'video', group: 'anime', key: 'animeEva' },
       { id: 'animeclip:violet', kind: 'video', group: 'anime', key: 'animeViolet' },
       { id: 'animeclip:gintama', kind: 'video', group: 'anime', key: 'animeGintama' },
+      { id: 'animeclip:slayers', kind: 'video', group: 'anime', key: 'animeSlayers' },
       { id: 'animeclip:bocchi', kind: 'video', group: 'cute', key: 'animeBocchi' },
       { id: 'animeclip:kon', kind: 'video', group: 'cute', key: 'animeKon' },
       { id: 'animeclip:nichijou', kind: 'video', group: 'cute', key: 'animeNichijou' },

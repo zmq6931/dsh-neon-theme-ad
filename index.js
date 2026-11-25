@@ -140,6 +140,10 @@ const ANIME_SERIES = {
   eva: { label: '新世纪福音战士', tags: ['neon_genesis_evangelion'] },
   violet: { label: '紫罗兰永恒花园', tags: ['violet_evergarden'] },
   gintama: { label: '银魂', tags: ['gintama'] },
+  slayers: {
+    label: '秀逗魔导士',
+    tags: ['slayers', 'slayers_try', 'slayers_next', 'slayers_revolution', 'slayers_evolution-r'],
+  },
   // Cute slice-of-life / girls' club shows.
   bocchi: { label: '孤独摇滚', tags: ['bocchi_the_rock!'] },
   kon: { label: '轻音少女', tags: ['k-on!'] },
